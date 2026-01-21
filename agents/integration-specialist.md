@@ -277,7 +277,7 @@ Skills can be created via:
 
 **Fixes**:
 1. Check console for script loading errors
-2. Verify `anthropic-api-key` is set (required for localhost)
+2. Verify `dev-mode` with API key is set (required for localhost)
 3. Confirm the import ran: `import "@mcp-b/embedded-agent/web-component"`
 
 ### Styling not applying
@@ -304,7 +304,7 @@ Skills can be created via:
 Add `enable-debug-tools` attribute to expose the embedded agent's UI as WebMCP tools:
 
 ```html
-<webmcp-agent anthropic-api-key="..." enable-debug-tools />
+<webmcp-agent dev-mode='{"anthropicApiKey":"..."}' enable-debug-tools />
 ```
 
 This lets you control the embedded agent directly from Chrome DevTools MCP - open/close the panel, send messages, inspect state.

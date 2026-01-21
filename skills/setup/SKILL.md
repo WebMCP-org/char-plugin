@@ -33,23 +33,35 @@ You are the conductor. MCP servers have the details. Follow this flow.
 
 ## Phase 2: Embed the Agent (Dev Mode)
 
-1. `npm install @mcp-b/embedded-agent`
-2. **Consult**: `mcp__char-docs__SearchChar({ query: "embed [framework]" })` for framework-specific syntax
-3. Add component with `anthropic-api-key` attribute
-4. **Ask**: "What's your Anthropic API key?" (or offer https://console.anthropic.com/)
-5. **Verify**:
+**Option A: Script tags (simplest, works anywhere)**
+```html
+<script src="https://unpkg.com/@mcp-b/embedded-agent/dist/web-component-standalone.iife.js" defer></script>
+<webmcp-agent dev-mode='{"anthropicApiKey":"sk-ant-..."}' />
+```
+
+**Option B: npm install (recommended for React/Vue/Next.js)**
+```bash
+npm install @mcp-b/embedded-agent
+```
+Then consult `mcp__char-docs__SearchChar({ query: "embed [framework]" })` for framework-specific syntax.
+
+**Steps:**
+1. Choose Option A for plain HTML/legacy, Option B for modern frameworks
+2. Add component with `dev-mode` attribute containing the API key
+3. **Ask**: "What's your Anthropic API key?" (or offer https://console.anthropic.com/)
+4. **Verify**:
    - `chrome-devtools: navigate_page` → localhost
    - `chrome-devtools: take_screenshot` → confirm bubble visible
    - `chrome-devtools: list_console_messages` → check for errors
 
-> `anthropic-api-key` only works on localhost. Production requires `auth-token`.
+> `dev-mode` with API key only works on localhost. Production requires `auth-token`.
 
 ### Enable Debug Tools
 
 Add `enable-debug-tools` to expose the embedded agent's UI as WebMCP tools:
 
 ```html
-<webmcp-agent anthropic-api-key="..." enable-debug-tools />
+<webmcp-agent dev-mode='{"anthropicApiKey":"..."}' enable-debug-tools />
 ```
 
 This lets you control the embedded agent directly from Chrome DevTools MCP:
@@ -120,7 +132,7 @@ Useful for testing the full flow without manual interaction.
    - `mcp__char-saas-staging__get_profile` → authenticate/create account
    - `mcp__char-saas-staging__manage_idp_config` → set allowed domains
    - **Consult**: `mcp__char-docs__SearchChar({ query: "identity provider SSO" })`
-   - Replace `anthropic-api-key` with `auth-token` flow
+   - Replace `dev-mode` with `auth-token` flow
 3. **If no**: "You're all set for local development!"
 
 ---
@@ -140,5 +152,5 @@ Tell the user:
 - Advanced styling: `mcp__char-docs__SearchChar({ query: "CSS variables" })`
 
 **Links:**
-- https://docs.meetchar.ai (Char docs)
+- https://docs.usechar.ai (Char docs)
 - https://docs.mcp-b.ai (WebMCP docs)
