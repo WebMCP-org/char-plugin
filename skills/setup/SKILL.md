@@ -1,188 +1,138 @@
 ---
-name: setup
-description: Set up Char embedded AI agent in a web app. Use when adding Char, embedding an AI chat widget, setting up WebMCP tools, or integrating browser automation.
-allowed-tools: Read, Write, Edit, Bash, Glob, Grep, mcp__chrome-devtools__*, mcp__char-docs__*, mcp__webmcp-Docs__*, mcp__char-saas__*
+name: char-setup
+description: Set up Char - an AI agent platform with WebMCP browser automation tools and embedded chat widgets. Use when the user wants to add Char to their website, set up WebMCP tools, integrate the embedded agent widget, or add AI chat functionality with browser automation.
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, mcp__chrome-devtools__*, mcp__char-docs__*, mcp__webmcp-Docs__*, mcp__char-saas-staging__*
 metadata:
   author: WebMCP
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
-# Char Setup
+# Char Setup Orchestration
 
-Set up Char in three steps: **embed** → **style** → **add a tool**.
+You are the conductor. MCP servers have the details. Follow this flow.
 
-## Documentation Servers
+## Building Blocks
 
-Search these MCP servers for detailed information:
-
-| Need | Server | Example Query |
-|------|--------|---------------|
-| Embedding, attributes, SSO | `mcp__char-docs__SearchChar` | "agent attributes", "auth-token" |
-| Tool registration, API | `mcp__webmcp-Docs__SearchWebMcpDocumentation` | "registerTool", "useWebMCP" |
+| MCP Server | Purpose | When to Use |
+|------------|---------|-------------|
+| `mcp__char-docs__SearchChar` | Char docs | Embedding, attributes, styling |
+| `mcp__webmcp-Docs__SearchWebMcpDocumentation` | WebMCP API | Tool registration patterns |
+| `mcp__chrome-devtools__*` | Browser automation | Verification, testing |
+| `mcp__char-saas-staging__*` | Account management | Production setup (end) |
 
 ---
 
-## Step 1: Embed the Agent
+## Phase 1: Detect Project
 
-**Goal**: Get the agent visible on localhost.
+1. Read `package.json` → detect framework (React, Vue, Next.js, plain HTML)
+2. Find entry point (App.tsx, layout.tsx, index.html)
+3. Note dev server port
+4. **If unsure**: Ask the user to confirm
 
-### Detect the project
+---
 
-- Check `package.json` for framework (React, Vue, Next.js, etc.)
-- Find the entry point (App.tsx, index.html, layout)
-- Note the dev server port
+## Phase 2: Embed the Agent (Dev Mode)
 
-### Install
+1. `npm install @mcp-b/embedded-agent`
+2. **Consult**: `mcp__char-docs__SearchChar({ query: "embed [framework]" })` for framework-specific syntax
+3. Add component with `anthropic-api-key` attribute
+4. **Ask**: "What's your Anthropic API key?" (or offer https://console.anthropic.com/)
+5. **Verify**:
+   - `chrome-devtools: navigate_page` → localhost
+   - `chrome-devtools: take_screenshot` → confirm bubble visible
+   - `chrome-devtools: list_console_messages` → check for errors
 
-```bash
-npm install @mcp-b/embedded-agent
-```
+> `anthropic-api-key` only works on localhost. Production requires `auth-token`.
 
-### Add the component
+### Enable Debug Tools
 
-**React/Next.js:**
-```jsx
-import "@mcp-b/embedded-agent/web-component";
-// In JSX:
-<webmcp-agent anthropic-api-key="sk-ant-..." />
-```
+Add `enable-debug-tools` to expose the embedded agent's UI as WebMCP tools:
 
-**Vue:**
-```vue
-<script setup>
-import "@mcp-b/embedded-agent/web-component";
-</script>
-<template>
-  <webmcp-agent anthropic-api-key="sk-ant-..." />
-</template>
-```
-
-**HTML:**
 ```html
-<script src="https://unpkg.com/@mcp-b/embedded-agent/dist/web-component-standalone.iife.js" defer></script>
-<webmcp-agent anthropic-api-key="sk-ant-..."></webmcp-agent>
+<webmcp-agent anthropic-api-key="..." enable-debug-tools />
 ```
 
-### Get the API key
+This lets you control the embedded agent directly from Chrome DevTools MCP:
+- Open/close the chat panel
+- Send messages programmatically
+- Inspect agent state
 
-Ask: **"What's your Anthropic API key?"**
-
-No key? → https://console.anthropic.com/
-
-> **Note**: `anthropic-api-key` only works on localhost. For production, use `auth-token` with SSO.
-
-### Verify
-
-1. Start dev server
-2. `mcp__chrome-devtools__navigate_page({ url: "http://localhost:PORT" })`
-3. `mcp__chrome-devtools__take_screenshot`
-4. Look for the chat bubble
-
-**For framework-specific details**: See [references/embedding.md](references/embedding.md)
+Useful for testing the full flow without manual interaction.
 
 ---
 
-## Step 2: Style the Agent
+## Phase 3: Position & Behavior
 
-**Goal**: Match the user's brand.
-
-### Extract colors
-
-Look at their CSS or Tailwind config for:
-- Primary/accent color
-- Background and text colors
-- Border color and radius
-
-### Apply CSS variables
-
-```css
-webmcp-agent {
-  --char-color-primary: #0f766e;
-  --char-color-background: #ffffff;
-  --char-color-foreground: #0f172a;
-  --char-color-muted: #f1f5f9;
-  --char-color-border: #e2e8f0;
-  --char-radius: 0.75rem;
-}
-```
-
-### Dark mode (if applicable)
-
-```css
-html.dark webmcp-agent {
-  --char-color-background: #0f172a;
-  --char-color-foreground: #e2e8f0;
-  --char-color-muted: #1e293b;
-  --char-color-border: #334155;
-}
-```
-
-**For complete CSS variable reference**: See [references/styling.md](references/styling.md)
+1. **Ask**: "How should the agent appear? (floating bubble, side panel, fills container)"
+2. Discuss open/close state (button trigger vs always open)
+3. **Consult**: `mcp__char-docs__SearchChar({ query: "open attribute positioning" })`
+4. Add trigger button if needed
+5. **Verify**: Screenshot with agent open
 
 ---
 
-## Step 3: Create a WebMCP Tool
+## Phase 4: Style to Match
 
-**Goal**: Let the agent interact with the UI.
-
-### Import the polyfill
-
-```typescript
-import '@mcp-b/global';
-```
-
-### Ask what action to enable
-
-**"What's one action you'd like the agent to help with?"**
-
-Good first tools: fill a form, click a button, toggle a setting, read data.
-
-### Register the tool
-
-Example - form fill:
-
-```typescript
-import '@mcp-b/global';
-
-navigator.modelContext.registerTool({
-  name: 'fill_contact_form',
-  description: 'Fill out the contact form',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      name: { type: 'string' },
-      email: { type: 'string' },
-    },
-    required: ['name', 'email'],
-  },
-  async execute({ name, email }) {
-    document.querySelector('[name="name"]').value = name;
-    document.querySelector('[name="email"]').value = email;
-    return { content: [{ type: 'text', text: `Filled form for ${name}` }] };
-  },
-});
-```
-
-### Test the tool
-
-```
-mcp__chrome-devtools__list_webmcp_tools
-mcp__chrome-devtools__call_webmcp_tool({ name: "fill_contact_form", arguments: { name: "Test", email: "test@example.com" } })
-mcp__chrome-devtools__take_screenshot
-```
-
-**For more tool patterns**: See [references/webmcp-tools.md](references/webmcp-tools.md)
+1. Read their CSS/Tailwind config → extract brand colors
+2. **Consult**: `mcp__char-docs__SearchChar({ query: "CSS variables theming" })`
+3. Apply `--char-color-*` variables matching their brand
+4. Handle dark mode if they have it
+5. **Verify**: Screenshot to confirm visual match
 
 ---
 
-## Summary
+## Phase 5: First WebMCP Tool
 
-After all three steps, tell the user:
+1. **Ask**: "What's one action the agent should help with?"
+   - Examples: fill a form, click a button, read data, navigate
+2. **Consult**: `mcp__webmcp-Docs__SearchWebMcpDocumentation({ query: "registerTool [use case]" })`
+3. Write the tool code with proper error handling
+4. **Verify**:
+   - `chrome-devtools: list_webmcp_tools` → tool appears
+   - `chrome-devtools: call_webmcp_tool` → test it directly
+   - `chrome-devtools: take_screenshot` → see the result
+
+---
+
+## Phase 6: User Tests It
+
+1. Prompt user: "Open the agent and ask it to [action]. Did it work?"
+2. Iterate if needed based on feedback
+
+---
+
+## Phase 7: Comprehensive Coverage? (Optional)
+
+1. **Ask**: "Want me to analyze your codebase and set up more tools? I can create comprehensive coverage for forms, actions, and navigation."
+2. **If yes**: Use the `integration-specialist` agent to autonomously:
+   - Discover all forms, buttons, and data displays
+   - Generate tools following scoping rules
+   - Create a routing tool for navigation
+   - Test everything via chrome-devtools
+3. **If no**: Move to production setup or wrap up
+
+---
+
+## Phase 8: Production Ready? (Optional)
+
+1. **Ask**: "Want to take this to production with SSO?"
+2. **If yes**:
+   - `mcp__char-saas-staging__get_profile` → authenticate/create account
+   - `mcp__char-saas-staging__manage_idp_config` → set allowed domains
+   - **Consult**: `mcp__char-docs__SearchChar({ query: "identity provider SSO" })`
+   - Replace `anthropic-api-key` with `auth-token` flow
+3. **If no**: "You're all set for local development!"
+
+---
+
+## Phase 9: Summary
+
+Tell the user:
 
 **What's working:**
 - Agent embedded on localhost
 - Styled to match the app
-- First tool registered
+- First tool registered and tested
 
 **Next steps:**
 - Add more tools: `mcp__webmcp-Docs__SearchWebMcpDocumentation({ query: "registerTool" })`
