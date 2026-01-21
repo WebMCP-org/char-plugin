@@ -1,0 +1,16 @@
+{
+  "name": "webmcp",
+  "owner": {
+    "name": "WebMCP",
+    "email": "alex@mcp-b.ai"
+  },
+  "description": "Official WebMCP plugins for browser automation and AI agent embedding",
+  "plugins": [
+    {
+      "name": "char",
+      "source": "./",
+      "description": "One-shot setup for Char embedded AI agent with WebMCP browser tools",
+      "version": "1.0.0"
+    }
+  ]
+}
