@@ -10,7 +10,7 @@
       "name": "char",
       "source": "./",
       "description": "One-shot setup for Char embedded AI agent with WebMCP browser tools",
-      "version": "1.0.0"
+      "version": "2.0.0"
     }
   ]
 }

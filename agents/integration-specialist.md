@@ -278,14 +278,14 @@ Skills can be created via:
 **Fixes**:
 1. Check console for script loading errors
 2. Verify `dev-mode` with API key is set (required for localhost)
-3. Confirm the import ran: `import "@mcp-b/embedded-agent/web-component"`
+3. Confirm the import ran: `import "@mcp-b/char/web-component"`
 
 ### Styling not applying
 
 **Symptom**: CSS variables have no effect.
 
 **Fixes**:
-1. Set variables on the `webmcp-agent` element, not globally
+1. Set variables on the `char-agent` element, not globally
 2. Shadow DOM blocks external selectors - only CSS variables work
 3. Check for typos in variable names (`--char-color-*`)
 
@@ -304,7 +304,7 @@ Skills can be created via:
 Add `enable-debug-tools` attribute to expose the embedded agent's UI as WebMCP tools:
 
 ```html
-<webmcp-agent dev-mode='{"anthropicApiKey":"..."}' enable-debug-tools />
+<char-agent dev-mode='{"anthropicApiKey":"..."}' enable-debug-tools />
 ```
 
 This lets you control the embedded agent directly from Chrome DevTools MCP - open/close the panel, send messages, inspect state.

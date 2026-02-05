@@ -35,15 +35,20 @@ You are the conductor. MCP servers have the details. Follow this flow.
 
 **Option A: Script tags (simplest, works anywhere)**
 ```html
-<script src="https://unpkg.com/@mcp-b/embedded-agent/dist/web-component-standalone.iife.js" defer></script>
-<webmcp-agent dev-mode='{"anthropicApiKey":"sk-ant-..."}' />
+<script src="https://cdn.jsdelivr.net/npm/@mcp-b/char@latest/dist/web-component-standalone.iife.js" defer></script>
+<char-agent dev-mode='{"anthropicApiKey":"sk-ant-..."}' />
 ```
 
 **Option B: npm install (recommended for React/Vue/Next.js)**
 ```bash
-npm install @mcp-b/embedded-agent
+npm install @mcp-b/char
 ```
 Then consult `mcp__char-docs__SearchChar({ query: "embed [framework]" })` for framework-specific syntax.
+
+For bundlers (Vite/Next/etc.), import the web component in your entry file:
+```ts
+import '@mcp-b/char/web-component';
+```
 
 **Steps:**
 1. Choose Option A for plain HTML/legacy, Option B for modern frameworks
@@ -61,7 +66,7 @@ Then consult `mcp__char-docs__SearchChar({ query: "embed [framework]" })` for fr
 Add `enable-debug-tools` to expose the embedded agent's UI as WebMCP tools:
 
 ```html
-<webmcp-agent dev-mode='{"anthropicApiKey":"..."}' enable-debug-tools />
+<char-agent dev-mode='{"anthropicApiKey":"..."}' enable-debug-tools />
 ```
 
 This lets you control the embedded agent directly from Chrome DevTools MCP:

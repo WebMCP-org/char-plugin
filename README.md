@@ -101,7 +101,7 @@ mcp__char-saas__manage_idp_config({
 ### Customize Styling
 
 ```css
-webmcp-agent {
+char-agent {
   --char-color-primary: #your-brand-color;
   --char-color-background: #ffffff;
   --char-color-foreground: #0f172a;
