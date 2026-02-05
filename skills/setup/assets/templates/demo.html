@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Char Demo - AI Agent with WebMCP Tools</title>
+  <style>
+    /* Design tokens - easily extractable by char-setup skill */
+    :root {
+      --brand-primary: #667eea;
+      --brand-secondary: #764ba2;
+      --bg-main: white;
+      --text-primary: #333;
+      --text-secondary: #666;
+      --text-tertiary: #555;
+      --text-muted: #444;
+      --border-color: #e0e0e0;
+      --border-radius-base: 8px;
+      --border-radius-large: 16px;
+      --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: var(--bg-main);
+      border-radius: var(--border-radius-large);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    h1 {
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      font-size: 32px;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      margin-bottom: 30px;
+      font-size: 16px;
+    }
+
+    .demo-section {
+      margin-bottom: 30px;
+    }
+
+    .demo-section h2 {
+      color: var(--text-muted);
+      font-size: 20px;
+      margin-bottom: 15px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      color: var(--text-tertiary);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid var(--border-color);
+      border-radius: var(--border-radius-base);
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.3s;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--brand-primary);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .button {
+      background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: var(--border-radius-base);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    .info-box {
+      background: #f0f4ff;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .info-box p {
+      color: #555;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .counter {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-top: 15px;
+    }
+
+    .counter button {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid var(--brand-primary);
+      background: white;
+      color: var(--brand-primary);
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .counter button:hover {
+      background: var(--brand-primary);
+      color: white;
+    }
+
+    .counter-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--text-primary);
+      min-width: 50px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 Char Demo</h1>
+    <p class="subtitle">AI Agent with WebMCP Browser Automation</p>
+
+    <div class="info-box">
+      <p>
+        👋 <strong>Try talking to the AI agent!</strong><br>
+        Ask it to fill out this form, click buttons, or interact with the page.
+        It can use WebMCP tools to automate browser tasks.
+      </p>
+    </div>
+
+    <div class="demo-section">
+      <h2>Contact Form</h2>
+      <form id="contact-form">
+        <div class="form-group">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" placeholder="John Doe">
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="john@example.com">
+        </div>
+
+        <div class="form-group">
+          <label for="topic">Topic</label>
+          <select id="topic" name="topic">
+            <option value="">Select a topic...</option>
+            <option value="general">General Inquiry</option>
+            <option value="support">Technical Support</option>
+            <option value="sales">Sales Question</option>
+            <option value="feedback">Feedback</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="message">Message</label>
+          <textarea id="message" name="message" placeholder="Your message here..."></textarea>
+        </div>
+
+        <button type="submit" class="button">Submit Form</button>
+      </form>
+    </div>
+
+    <div class="demo-section">
+      <h2>Interactive Counter</h2>
+      <div class="counter">
+        <button id="decrement">−</button>
+        <span class="counter-value" id="counter-value">0</span>
+        <button id="increment">+</button>
+        <button id="reset" class="button" style="margin-left: auto;">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Counter logic
+    let count = 0;
+    const counterValue = document.getElementById('counter-value');
+
+    document.getElementById('increment').addEventListener('click', () => {
+      count++;
+      counterValue.textContent = count;
+    });
+
+    document.getElementById('decrement').addEventListener('click', () => {
+      count--;
+      counterValue.textContent = count;
+    });
+
+    document.getElementById('reset').addEventListener('click', () => {
+      count = 0;
+      counterValue.textContent = count;
+    });
+
+    // Form submission
+    document.getElementById('contact-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData);
+      console.log('Form submitted:', data);
+      alert('Form submitted! Check the console for details.');
+    });
+
+    // Expose design tokens for easy extraction by char-setup skill
+    window.DESIGN_TOKENS = {
+      colors: {
+        primary: getComputedStyle(document.documentElement)
+          .getPropertyValue('--brand-primary').trim(),
+        secondary: getComputedStyle(document.documentElement)
+          .getPropertyValue('--brand-secondary').trim(),
+        background: getComputedStyle(document.documentElement)
+          .getPropertyValue('--bg-main').trim(),
+        textPrimary: getComputedStyle(document.documentElement)
+          .getPropertyValue('--text-primary').trim(),
+        border: getComputedStyle(document.documentElement)
+          .getPropertyValue('--border-color').trim()
+      },
+      borderRadius: {
+        base: getComputedStyle(document.documentElement)
+          .getPropertyValue('--border-radius-base').trim(),
+        large: getComputedStyle(document.documentElement)
+          .getPropertyValue('--border-radius-large').trim()
+      },
+      fontFamily: getComputedStyle(document.documentElement)
+        .getPropertyValue('--font-family').trim()
+    };
+    console.log('🎨 Design tokens exposed:', window.DESIGN_TOKENS);
+  </script>
+
+  <!-- Char Embedded Agent Widget -->
+  <!-- REPLACE_WITH_API_KEY will be replaced by the setup script -->
+  <!-- Note: Install packages first: npm install @mcp-b/char @mcp-b/global -->
+  <script type="module" src="/node_modules/@mcp-b/char/dist/web-component-standalone.iife.js"></script>
+  <style>
+    char-agent {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 400px;
+      height: 100vh;
+      z-index: 9999;
+    }
+  </style>
+  <script>
+    console.log('✅ Char embedded agent initialized!')
+    console.log('💡 Try saying: "Fill out the contact form with test data"')
+  </script>
+
+  <char-agent
+    dev-mode='{"anthropicApiKey": "REPLACE_WITH_API_KEY"}'>
+  </char-agent>
+</body>
+</html>

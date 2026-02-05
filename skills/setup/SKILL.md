@@ -1,161 +1,397 @@
 ---
 name: char-setup
+version: 3.0.0
 description: Set up Char - an AI agent platform with WebMCP browser automation tools and embedded chat widgets. Use when the user wants to add Char to their website, set up WebMCP tools, integrate the embedded agent widget, or add AI chat functionality with browser automation.
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep, AskUserQuestion, mcp__chrome-devtools__*, mcp__char-docs__*, mcp__webmcp-Docs__*, mcp__char-saas-staging__*
-metadata:
-  author: WebMCP
-  version: "2.0.0"
 ---
 
-# Char Setup Orchestration
+# Char Setup Assistant
 
-You are the conductor. MCP servers have the details. Follow this flow.
+Guides you through integrating Char AI agents into websites with WebMCP browser automation tools.
 
-## Building Blocks
+## Quick Reference
 
-| MCP Server | Purpose | When to Use |
-|------------|---------|-------------|
-| `mcp__char-docs__SearchChar` | Char docs | Embedding, attributes, styling |
-| `mcp__webmcp-Docs__SearchWebMcpDocumentation` | WebMCP API | Tool registration patterns |
-| `mcp__chrome-devtools__*` | Browser automation | Verification, testing |
-| `mcp__char-saas-staging__*` | Account management | Production setup (end) |
+| Task | Command/Action | Where |
+|------|---------------|-------|
+| **Install Chrome DevTools MCP** | `claude mcp add --transport stdio chrome-devtools -- npx -y @mcp-b/chrome-devtools-mcp` | Terminal |
+| **Create demo page** | Ask: "Create a Char demo page" | This skill auto-creates |
+| **Add to existing page** | Ask: "Add Char to my index.html" | This skill adds widget |
+| **Match page design** | Ask: "Set up Char matching my page's style" | Auto-maps CSS variables |
+| **Live preview on any site** | Ask: "Preview Char on https://example.com" | CDP injection |
+| **Verify setup** | Look for `✅ Char embedded agent initialized!` | Browser console |
+| **Customize styling** | See [CUSTOMIZATION.md](references/CUSTOMIZATION.md) | Reference docs |
+| **Write WebMCP tools** | See [WEBMCP_TOOL_PATTERNS.md](references/WEBMCP_TOOL_PATTERNS.md) | Reference docs |
+| **Troubleshoot** | See [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) | Reference docs |
 
----
+## Success Criteria
 
-## Phase 1: Detect Project
+After setup, you should see:
 
-1. Read `package.json` → detect framework (React, Vue, Next.js, plain HTML)
-2. Find entry point (App.tsx, layout.tsx, index.html)
-3. Note dev server port
-4. **If unsure**: Ask the user to confirm
+✅ **Page loads successfully**
+- HTML file opens in browser without errors
 
----
+✅ **Widget appears**
+- `` renders and the chat UI opens
 
-## Phase 2: Embed the Agent (Dev Mode)
+✅ **Console confirms initialization**
+```
+✅ Char embedded agent initialized!
+💡 Try saying: "Fill out the contact form with test data"
+```
 
-**Option A: Script tags (simplest, works anywhere)**
+✅ **Agent responds**
+- Click the pill, type a message, get a response
+
+✅ **WebMCP tools work**
+- Agent can interact with page elements (click, fill forms)
+
+If any check fails, see [Troubleshooting](references/TROUBLESHOOTING.md).
+
+## What is Char?
+
+**Char** is an AI agent platform for embedding conversational agents on websites with:
+- **WebMCP tools** - Browser automation (click, fill forms, navigate, screenshot)
+- **Embedded agent widget** - Drop-in chat UI powered by `@mcp-b/char`
+- **Auth-token mode** - Production embed using your auth token
+- **Dev mode** - Quick start using your own Anthropic API key (no backend needed)
+
+**Note:** Use the `` web component for embedding.
+
+## Prerequisites
+
+### Required
+- This skill (you're already using it!)
+- Anthropic API key (for devMode)
+- Chrome, Edge, or Chromium 90+
+- Node.js 14+ (for verification script)
+
+### Verify Prerequisites
+
+Run the verification script to check your setup:
+
+```bash
+node scripts/verify-setup.js
+
+# Optional: Check API key format
+node scripts/verify-setup.js --check-api-key sk-ant-...
+```
+
+Expected output:
+```
+✓ Node.js 24.11.1 (>= 14.0.0)
+✓ Google Chrome 120 found (>= 90)
+✓ Demo template found
+✓ Network connectivity to api.anthropic.com
+✓ All required checks passed!
+```
+
+### Optional MCP Servers (Recommended)
+
+**Chrome DevTools MCP** - Enables automated browser testing and visual integration:
+```bash
+claude mcp add --transport stdio chrome-devtools -- \
+  npx -y @mcp-b/chrome-devtools-mcp
+```
+Verify installation: `/mcp` and look for `chrome-devtools`
+
+**MCPB Documentation (WebMCP Server)** - Source of truth for WebMCP API names/signatures (do not guess):
+```bash
+# Check if installed:
+/mcp
+# Look for a WebMCP Server / MCPB documentation tool
+```
+
+## Quick Start
+
+The fastest path is **dev mode** - works immediately with your Anthropic API key.
+For production, use **auth-token** (see [references/PRODUCTION.md](references/PRODUCTION.md)).
+
+1. I'll check which MCP servers are available
+2. Create an HTML page with Char embedded agent
+3. Inject your API key
+4. Verify setup (automated if Chrome DevTools MCP available, manual otherwise)
+
+## Setup Workflow
+
+**CRITICAL - Check MCP Availability First:**
+Before starting, I'll check which MCP servers are available by examining available tools. This determines the testing approach. If the MCPB documentation (WebMCP Server) is available, use it to verify API names/signatures before writing tool registration code.
+
+### Step 1: Auto-detect or Create Demo Page
+
+**If you have an existing HTML page:**
+- Tell me the path and I'll add Char to it
+
+**If starting fresh:**
+- I'll create a minimal demo page from [assets/templates/demo.html](assets/templates/demo.html)
+- The template includes a contact form and interactive counter for testing
+
+### Step 2: Add Char Embedded Agent Widget
+
+**First, install the package:**
+
+```bash
+npm install @mcp-b/char @mcp-b/global
+```
+
+**Then add the widget to your page.**
+
+**Recommended: Collapsible sidebar** (pushes content left when opened):
+
+```html
+<!-- Your app shell — outermost flex container -->
+<div style="display: flex; height: 100vh; width: 100%; overflow: hidden;">
+  <!-- Your existing content -->
+  <div style="display: flex; min-width: 0; flex: 1;">
+    <!-- sidebar, main content, etc. -->
+  </div>
+
+  <!-- Char agent panel — flex sibling, animates between 420px and 0 -->
+  <div id="char-panel" style="flex-shrink: 0; overflow: hidden; border-left: 1px solid transparent; transition: width 0.2s ease-out; width: 0;">
+    <div style="width: 420px; height: 100%;">
+      <char-agent auth-token="YOUR_AUTH_TOKEN"></char-agent>
+    </div>
+  </div>
+</div>
+```
+
+**Alternative: Fixed overlay** (for simple pages without flex layout):
+
 ```html
 <script src="https://cdn.jsdelivr.net/npm/@mcp-b/char@latest/dist/web-component-standalone.iife.js" defer></script>
-<char-agent dev-mode='{"anthropicApiKey":"sk-ant-..."}' />
+<style>
+  char-agent {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 400px;
+    height: 100vh;
+    z-index: 9999;
+  }
+</style>
+<char-agent auth-token="YOUR_AUTH_TOKEN"></char-agent>
 ```
 
-**Option B: npm install (recommended for React/Vue/Next.js)**
-```bash
-npm install @mcp-b/char
+For stateless devMode (testing only):
+
+```html
+<char-agent dev-mode='{"anthropicApiKey": "YOUR_API_KEY"}'></char-agent>
 ```
-Then consult `mcp__char-docs__SearchChar({ query: "embed [framework]" })` for framework-specific syntax.
 
 For bundlers (Vite/Next/etc.), import the web component in your entry file:
+
 ```ts
 import '@mcp-b/char/web-component';
 ```
 
-**Steps:**
-1. Choose Option A for plain HTML/legacy, Option B for modern frameworks
-2. Add component with `dev-mode` attribute containing the API key
-3. **Ask**: "What's your Anthropic API key?" (or offer https://console.anthropic.com/)
-4. **Verify**:
-   - `chrome-devtools: navigate_page` → localhost
-   - `chrome-devtools: take_screenshot` → confirm bubble visible
-   - `chrome-devtools: list_console_messages` → check for errors
+**Shadow DOM note:** The widget always renders inside Shadow DOM. WebMCP tools cannot target elements inside the widget. Treat it as a black box and customize via CSS variables on ``.
 
-> `dev-mode` with API key only works on localhost. Production requires `auth-token`.
+### Step 2.5: Match Host Page Styling (CRITICAL)
 
-### Enable Debug Tools
+**The widget MUST visually blend with the host page!**
 
-Add `enable-debug-tools` to expose the embedded agent's UI as WebMCP tools:
+Extract the host page's design tokens and apply them as CSS variables:
 
-```html
-<char-agent dev-mode='{"anthropicApiKey":"..."}' enable-debug-tools />
+```typescript
+// Add this code after the widget is loaded (in your main.ts/main.js)
+const bodyStyles = getComputedStyle(document.body);
+const linkElement = document.querySelector('a');
+const linkColor = linkElement ? getComputedStyle(linkElement).color : '#646cff';
+
+const agent = document.querySelector('char-agent') as HTMLElement;
+if (agent) {
+  agent.style.setProperty('--char-color-background', bodyStyles.backgroundColor);
+  agent.style.setProperty('--char-color-foreground', bodyStyles.color);
+  agent.style.setProperty('--char-color-primary', linkColor);
+  agent.style.setProperty('--char-color-muted', bodyStyles.backgroundColor);
+}
 ```
 
-This lets you control the embedded agent directly from Chrome DevTools MCP:
-- Open/close the chat panel
-- Send messages programmatically
-- Inspect agent state
+**Or apply directly in HTML:**
 
-Useful for testing the full flow without manual interaction.
+```html
+<char-agent
+  style="
+    --char-color-background: #1a1a1a;
+    --char-color-foreground: rgba(255, 255, 255, 0.87);
+    --char-color-primary: #646cff;
+    --char-color-muted: #242424;
+  "
+  dev-mode='{"anthropicApiKey":"..."}'>
+</char-agent>
+```
+
+**Available CSS variables:**
+- `--char-color-background` - Main background color
+- `--char-color-foreground` - Main text color
+- `--char-color-primary` - Brand/accent color (buttons, links)
+- `--char-color-muted` - Secondary background color
+- `--char-color-border` - Border colors
+- Many more - see [CUSTOMIZATION.md](references/CUSTOMIZATION.md)
+
+**If you skip this step, the widget will look jarring and out of place!**
+
+### Step 3: Verify WebMCP Tools
+
+**Path A: With Chrome DevTools MCP (Automated)**
+
+If Chrome DevTools MCP is available, I'll run automated tests to verify:
+- ✅ Page loads correctly
+- ✅ Embedded agent initializes
+- ✅ Form elements are clickable
+- ✅ WebMCP tools are functional
+
+**Path B: Without Chrome DevTools MCP (Manual)**
+
+If Chrome DevTools MCP is not available, I'll provide manual testing instructions:
+
+1. Open `demo.html` in Chrome/Edge
+2. Open DevTools (F12) → Console tab
+3. Look for: `✅ Char embedded agent initialized!`
+4. Click the chat widget (bottom-right)
+5. Try: "Fill out the contact form with test data"
+6. Verify the agent can interact with the page
+
+**Recommendation:** Install Chrome DevTools MCP for automated testing in future setups.
+
+### Step 4: Launch in Browser
+
+I'll use the `open` command (macOS) or `start` (Windows) to launch your page in the default browser.
+
+If you have a local dev server running, I'll navigate to that URL instead.
+
+## Visual Integration (Chrome DevTools MCP)
+
+When Chrome DevTools MCP is available, I can automatically analyze your page's design and generate matching CSS variable overrides for Char.
+
+**What I'll do:**
+1. **Extract page styles** - Colors, fonts, border radius, and design patterns
+2. **Generate matching styles** - Map your styles to Char's CSS variables
+3. **Take screenshots** - Before/after verification at desktop and mobile viewports
+4. **Check accessibility** - Verify contrast ratios meet WCAG AA standards
+
+**Example output:**
+```
+🎨 Extracted: Primary #667eea, Background #fff, Font: system-ui
+⚙️  Generated CSS variables with matching colors and typography
+📸 Screenshots: collapsed, expanded, mobile viewports
+✅ Visual integration complete!
+```
+
+See [Visual Integration Guide](references/VISUAL_INTEGRATION.md) for the complete workflow, best practices, and detailed examples.
+
+## Live Preview (Chrome DevTools MCP)
+
+Preview what Char looks like on **any live website** — without touching their codebase. Uses CDP to extract design tokens, inject the Char bundle, and build a themed collapsible sidebar.
+
+**What I'll do:**
+1. **Navigate** to the target URL and screenshot
+2. **Extract** CSS custom properties (light + dark mode)
+3. **Fetch** the Char IIFE bundle from jsdelivr CDN
+4. **Inject** themed sidebar as a flex sibling (pushes content left)
+5. **Screenshot** the result in both themes
+
+**Example:**
+```
+"Preview what Char looks like on https://app.example.com/dashboard"
+```
+
+**Result:** A fully themed Char sidebar on their live site — realistic preview of the final integration.
+
+See [Live Preview Guide](references/LIVE_PREVIEW.md) for the complete step-by-step workflow and gotchas.
+
+## WebMCP Tools Reference
+
+Once set up, your embedded agent can use these tools:
+
+| Tool | What It Does |
+|------|--------------|
+| `click` | Click buttons, links, elements |
+| `fill` | Fill form inputs |
+| `navigate` | Navigate to URLs |
+| `take_snapshot` | Capture page text content |
+| `take_screenshot` | Capture visual screenshot |
+| `evaluate_script` | Run JavaScript on page |
+| `hover` | Hover over elements |
+| `press_key` | Keyboard input |
+
+See [references/WEBMCP_REFERENCE.md](references/WEBMCP_REFERENCE.md) for complete tool documentation.
+
+## Registering Custom WebMCP Tools
+
+To create page-specific tools that your embedded agent can use:
+
+**Host Applications**:
+- Register tools in your app using `window.navigator.modelContext.registerTool` (polyfilled by `@mcp-b/global`)
+- Register tools in your components (pages, layouts)
+- Tools automatically appear/disappear as users navigate (progressive disclosure)
+- Avoid hard reloads or forced navigation in tool handlers (e.g., `window.location.reload()`), since this unmounts tools and the in-page agent. Prefer updating in-page state or using in-app routing when possible.
+
+See [TOOL_REGISTRATION.md](references/TOOL_REGISTRATION.md) for the complete guide with patterns for:
+- Layout-level vs page-level registration
+- Conditional tool registration
+- Vanilla JS implementation
+- Testing with Chrome DevTools MCP
+
+## Examples
+
+**Example 1: Add to existing page**
+> "Add Char to my index.html file"
+
+**Example 2: Create demo from scratch**
+> "Create a Char demo page with a contact form"
+
+**Example 3: Visual integration**
+> "Set up Char and make sure it matches my page's design"
+
+**Example 4: Live preview on a customer's site**
+> "Preview what Char looks like on https://app.example.com/dashboard"
+
+## Important Notes
+
+- **API Key Security**: Never commit your Anthropic API key to git
+- **Dev Mode Only**: Stateless mode is for development/testing
+- **Production**: Use `auth-token` (see [references/PRODUCTION.md](references/PRODUCTION.md))
+- **Browser Required**: You need Chrome/Edge for WebMCP tools to work
+- **MCP Servers**: Optional but recommended for automated testing and visual integration
+
+## Troubleshooting
+
+See [references/TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) for common issues.
+
+## Additional Resources
+
+### Getting Started
+- [RECIPES.md](references/RECIPES.md) - Common setup patterns (quick copy-paste examples)
+- [Quick Reference](#quick-reference) - Command cheat sheet (this page)
+
+### Configuration
+- [CUSTOMIZATION.md](references/CUSTOMIZATION.md) - Complete theming and styling guide
+- [VISUAL_INTEGRATION.md](references/VISUAL_INTEGRATION.md) - Design integration best practices
+- [LIVE_PREVIEW.md](references/LIVE_PREVIEW.md) - Live preview via CDP injection (sales demos, onboarding)
+
+### Implementation
+- [TOOL_REGISTRATION.md](references/TOOL_REGISTRATION.md) - How to register custom WebMCP tools
+- [TESTING_GUIDE.md](references/TESTING_GUIDE.md) - Testing procedures with Chrome DevTools MCP
+
+### Reference
+- [WEBMCP_REFERENCE.md](references/WEBMCP_REFERENCE.md) - Complete tool documentation
+- [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) - Common issues and solutions
+
+### Examples
+- [EXAMPLE_INTEGRATION.md](references/EXAMPLE_INTEGRATION.md) - Complete Cypress RealWorld App integration
+
+### Advanced
+- [PRODUCTION.md](references/PRODUCTION.md) - Production deployment with stateful backend
+
+### Development
+- [CHANGELOG.md](CHANGELOG.md) - Version history
+- [CONTRIBUTING.md](CONTRIBUTING.md) - How to improve this skill
 
 ---
 
-## Phase 3: Position & Behavior
-
-1. **Ask**: "How should the agent appear? (floating bubble, side panel, fills container)"
-2. Discuss open/close state (button trigger vs always open)
-3. **Consult**: `mcp__char-docs__SearchChar({ query: "open attribute positioning" })`
-4. Add trigger button if needed
-5. **Verify**: Screenshot with agent open
-
----
-
-## Phase 4: Style to Match
-
-1. Read their CSS/Tailwind config → extract brand colors
-2. **Consult**: `mcp__char-docs__SearchChar({ query: "CSS variables theming" })`
-3. Apply `--char-color-*` variables matching their brand
-4. Handle dark mode if they have it
-5. **Verify**: Screenshot to confirm visual match
-
----
-
-## Phase 5: First WebMCP Tool
-
-1. **Ask**: "What's one action the agent should help with?"
-   - Examples: fill a form, click a button, read data, navigate
-2. **Consult**: `mcp__webmcp-Docs__SearchWebMcpDocumentation({ query: "registerTool [use case]" })`
-3. Write the tool code with proper error handling
-4. **Verify**:
-   - `chrome-devtools: list_webmcp_tools` → tool appears
-   - `chrome-devtools: call_webmcp_tool` → test it directly
-   - `chrome-devtools: take_screenshot` → see the result
-
----
-
-## Phase 6: User Tests It
-
-1. Prompt user: "Open the agent and ask it to [action]. Did it work?"
-2. Iterate if needed based on feedback
-
----
-
-## Phase 7: Comprehensive Coverage? (Optional)
-
-1. **Ask**: "Want me to analyze your codebase and set up more tools? I can create comprehensive coverage for forms, actions, and navigation."
-2. **If yes**: Use the `integration-specialist` agent to autonomously:
-   - Discover all forms, buttons, and data displays
-   - Generate tools following scoping rules
-   - Create a routing tool for navigation
-   - Test everything via chrome-devtools
-3. **If no**: Move to production setup or wrap up
-
----
-
-## Phase 8: Production Ready? (Optional)
-
-1. **Ask**: "Want to take this to production with SSO?"
-2. **If yes**:
-   - `mcp__char-saas-staging__get_profile` → authenticate/create account
-   - `mcp__char-saas-staging__manage_idp_config` → set allowed domains
-   - **Consult**: `mcp__char-docs__SearchChar({ query: "identity provider SSO" })`
-   - Replace `dev-mode` with `auth-token` flow
-3. **If no**: "You're all set for local development!"
-
----
-
-## Phase 9: Summary
-
-Tell the user:
-
-**What's working:**
-- Agent embedded on localhost
-- Styled to match the app
-- First tool registered and tested
-
-**Next steps:**
-- Add more tools: `mcp__webmcp-Docs__SearchWebMcpDocumentation({ query: "registerTool" })`
-- Production SSO: `mcp__char-docs__SearchChar({ query: "identity provider" })`
-- Advanced styling: `mcp__char-docs__SearchChar({ query: "CSS variables" })`
-
-**Links:**
-- https://docs.usechar.ai (Char docs)
-- https://docs.mcp-b.ai (WebMCP docs)
+**Next Steps After Setup:**
+1. Chat with your embedded agent
+2. Ask it to interact with your page
+3. Watch WebMCP tools in action
+4. Customize the widget styling
+5. Move to production when ready

@@ -55,11 +55,12 @@ This will:
 
 ### Skills
 
-- `/char:setup` - Complete setup wizard
+- `/char:setup` - Complete setup wizard (visual integration, live preview, recipes, troubleshooting)
+- `/char:webmcp` - WebMCP tool writing patterns and best practices
 
 ### Agents
 
-- `integration-specialist` - Expert for adding WebMCP tools and advanced customization
+- `integration-specialist` - Autonomous agent that creates comprehensive WebMCP tool coverage for your codebase
 
 ## After Setup
 
