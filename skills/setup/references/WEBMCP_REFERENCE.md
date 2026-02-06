@@ -1,4 +1,4 @@
-# WebMCP Tools Reference
+# CDP MCP w/ WebMCP Tools Reference
 
 Complete reference for all WebMCP browser automation tools available to your embedded agent.
 

@@ -1,0 +1,24 @@
+anythings your write with window.navigator.registerPrompt... or  useWebMCPPrompt({... will show up as a "suggetion" in the char ai agent.
+
+This is a great way to tell the user what they can do on a page. these are dynamic like webmcp tools,
+
+This is an essential part of any good app. You generally want to shoot for 1-4 prompts per page, if you have more than that, than you can do too much on a page. you can also make them base on application state.
+
+
+ useWebMCPPrompt({
+    name: "Set up my identity provider",
+    description: "Help me configure SSO authentication for my widget",
+    get: () => ({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: "Help me configure SSO authentication for my widget",
+          },
+        },
+      ],
+    }),
+  });
+
+  or similar for the vanilla js api
