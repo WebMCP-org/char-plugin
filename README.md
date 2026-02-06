@@ -1,6 +1,6 @@
 # Char Plugin for Claude Code
 
-One-shot setup for [Char](https://docs.usechar.ai) embedded AI agent with WebMCP browser tools.
+One-shot setup for [Char](https://docs.usechar.com) embedded AI agent with WebMCP browser tools.
 
 ## What is Char?
 
@@ -110,9 +110,9 @@ webmcp-agent {
 
 ## Documentation
 
-- [Char Docs](https://docs.usechar.ai) - Full documentation
+- [Char Docs](https://docs.usechar.com) - Full documentation
 - [WebMCP Docs](https://docs.mcp-b.ai) - Tool registration API
-- [Identity Providers](https://docs.usechar.ai/identity-providers) - SSO setup guides
+- [Identity Providers](https://docs.usechar.com/identity-providers) - SSO setup guides
 
 ## Support
 

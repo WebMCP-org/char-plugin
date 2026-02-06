@@ -6,7 +6,7 @@
     },
     "char-docs": {
       "type": "http",
-      "url": "https://docs.usechar.ai/mcp"
+      "url": "https://docs.usechar.com/mcp"
     },
     "webmcp-docs": {
       "type": "http",
@@ -14,7 +14,7 @@
     },
     "char-saas": {
       "type": "http",
-      "url": "https://app.usechar.ai/mcp"
+      "url": "https://app.usechar.com/mcp"
     }
   }
 }

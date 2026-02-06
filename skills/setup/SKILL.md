@@ -152,5 +152,5 @@ Tell the user:
 - Advanced styling: `mcp__char-docs__SearchChar({ query: "CSS variables" })`
 
 **Links:**
-- https://docs.usechar.ai (Char docs)
+- https://docs.usechar.com (Char docs)
 - https://docs.mcp-b.ai (WebMCP docs)
