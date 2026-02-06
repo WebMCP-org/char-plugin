@@ -20,7 +20,7 @@ Guides you through integrating Char AI agents into websites with WebMCP browser 
 | **Live preview on any site** | Ask: "Preview Char on https://example.com" | CDP injection |
 | **Verify setup** | Look for `✅ Char embedded agent initialized!` | Browser console |
 | **Customize styling** | See [CUSTOMIZATION.md](references/CUSTOMIZATION.md) | Reference docs |
-| **Write WebMCP tools** | See [WEBMCP_TOOL_PATTERNS.md](references/WEBMCP_TOOL_PATTERNS.md) | Reference docs |
+| **Write WebMCP tools** | Use the `/char:webmcp` skill | Separate skill |
 | **Troubleshoot** | See [TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) | Reference docs |
 
 ## Success Criteria
@@ -318,18 +318,10 @@ See [references/WEBMCP_REFERENCE.md](references/WEBMCP_REFERENCE.md) for complet
 
 ## Registering Custom WebMCP Tools
 
-To create page-specific tools that your embedded agent can use:
-
-**Host Applications**:
-- Register tools in your app using `window.navigator.modelContext.registerTool` (polyfilled by `@mcp-b/global`)
-- Register tools in your components (pages, layouts)
-- Tools automatically appear/disappear as users navigate (progressive disclosure)
-- Avoid hard reloads or forced navigation in tool handlers (e.g., `window.location.reload()`), since this unmounts tools and the in-page agent. Prefer updating in-page state or using in-app routing when possible.
-
-See [TOOL_REGISTRATION.md](references/TOOL_REGISTRATION.md) for the complete guide with patterns for:
-- Layout-level vs page-level registration
-- Conditional tool registration
-- Vanilla JS implementation
+To create page-specific tools that your embedded agent can use, run `/char:webmcp` — the WebMCP tool-writing skill covers everything:
+- Registration patterns (React, Vanilla JS)
+- Read/fill and fill/submit form tools
+- Navigation, read-only, and action tools
 - Testing with Chrome DevTools MCP
 
 ## Examples
@@ -370,7 +362,7 @@ See [references/TROUBLESHOOTING.md](references/TROUBLESHOOTING.md) for common is
 - [LIVE_PREVIEW.md](references/LIVE_PREVIEW.md) - Live preview via CDP injection (sales demos, onboarding)
 
 ### Implementation
-- [TOOL_REGISTRATION.md](references/TOOL_REGISTRATION.md) - How to register custom WebMCP tools
+- `/char:webmcp` skill - How to write custom WebMCP tools (patterns, testing, best practices)
 - [TESTING_GUIDE.md](references/TESTING_GUIDE.md) - Testing procedures with Chrome DevTools MCP
 
 ### Reference

@@ -1,6 +1,6 @@
 # WebMCP Tool Patterns
 
-Detailed guidance for each tool type. Examples show the pattern shape; consult the WebMCP docs MCP server for up-to-date syntax.
+Detailed examples for each tool type. Examples show the pattern shape; consult the WebMCP docs MCP server for up-to-date syntax.
 
 ## Navigation Tool
 
@@ -26,7 +26,6 @@ Note: Navigation unmounts current page tools.
 
 **Example (React):**
 ```tsx
-// In your root layout component
 function RootLayout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -39,7 +38,6 @@ Pages:
 - /app - Dashboard with usage stats and quick actions
 - /billing - Manage subscription and payment methods
 - /settings - Organization settings and team management
-- /integration - Widget configuration and SSO setup
 
 Note: Navigation unmounts current page tools.`,
     inputSchema: {
@@ -82,7 +80,6 @@ Note: Navigation unmounts current page tools.`,
     },
     annotations: { destructiveHint: true },
     execute: async ({ path }) => {
-      // Use your router's navigation method
       window.history.pushState({}, "", path);
       window.dispatchEvent(new PopStateEvent("popstate"));
       return { content: [{ type: "text", text: JSON.stringify({ navigated: path }) }] };
@@ -103,7 +100,7 @@ registerNavTool(window.location.pathname);
 
 Tool names are implementation details. They change. "billing_form" might become "subscription_config" tomorrow. But "/billing - Manage subscription" stays true regardless.
 
-Also: the AI doesn't need to know tool names in advance. After navigation, it calls `list_webmcp_tools` to see what's available.
+The AI doesn't need to know tool names in advance. After navigation, it calls `list_webmcp_tools` to see what's available.
 
 ---
 
@@ -123,16 +120,11 @@ Also: the AI doesn't need to know tool names in advance. After navigation, it ca
 - Computed values (usage stats, remaining quota)
 
 **When NOT to use:**
-- If the data is already in the description (use read/fill instead)
+- If the data is already in the description (avoid redundant round trips)
 - If calling an API is expensive (cache or include in description)
-
-**Layout vs Page:**
-
-Layout-level read-only tools are powerful. "What's my subscription status?" works from any page. But don't overdo it - too many global tools clutters the tool list.
 
 **Example (React):**
 ```tsx
-// Can register at layout level for cross-page access
 useWebMCP({
   name: "billing_status",
   description: "Get current subscription status, plan details, and usage.",
@@ -158,7 +150,6 @@ useWebMCP({
 
 **Example (Vanilla JS):**
 ```js
-// Register once - no re-registration needed for read-only tools
 navigator.modelContext.registerTool({
   name: "billing_status",
   description: "Get current subscription status, plan details, and usage.",
@@ -184,7 +175,7 @@ navigator.modelContext.registerTool({
 
 ---
 
-## Form Tools (Read/Fill)
+## Form Tools: Read/Fill
 
 **Purpose:** Let AI read and modify form state in one unified tool.
 
@@ -200,15 +191,6 @@ Call with {field: value} → merges with current, saves
 3. Include current state in description
 4. Re-register when state changes (updates description)
 5. Mark `destructiveHint: true`
-
-**Why read/fill instead of separate tools?**
-
-Three tools per form (read, fill, submit) creates confusion:
-- When do I read vs fill?
-- Does fill auto-submit?
-- How do I do partial updates?
-
-One tool with modes is clearer. The AI already knows this pattern from Claude Code's Edit tool.
 
 **The merge logic:**
 
@@ -326,6 +308,148 @@ Call with no values to read. Call with values to save.`,
 
 ---
 
+## Form Tools: Fill/Submit
+
+**Purpose:** Separate tools for staging vs committing, so the user sees changes before they're saved.
+
+**The pattern:**
+- **Fill tool** (idempotent): Updates form fields visually, no backend changes
+- **Submit tool** (destructive): Saves current form state to backend
+
+Like `git add` then `git commit`. The fill tool stages changes; the submit tool persists them.
+
+**When to use instead of Read/Fill:**
+- Complex forms where the user should verify changes before save
+- Multi-field forms where the AI may iterate (fill, adjust, fill again)
+- Forms with expensive or irreversible writes
+
+**Example (React):**
+```tsx
+function IDPConfigPage() {
+  const [formState, setFormState] = useState({
+    idp_type: null as string | null,
+    client_id: "",
+    domain: "",
+  });
+  const [isDirty, setIsDirty] = useState(false);
+  const saveMutation = useMutation({ mutationFn: saveIdpConfig });
+
+  // Fill tool - updates UI only, no backend changes
+  useWebMCP({
+    name: "idp_form",
+    description: `Fill IDP configuration form.
+
+Current form state: ${JSON.stringify(formState)}
+${isDirty ? "Has unsaved changes." : "No unsaved changes."}
+
+Updates the form visually. Use idp_submit to save.`,
+    inputSchema: {
+      idp_type: z.enum(["okta", "auth0", "google"]).optional(),
+      client_id: z.string().optional(),
+      domain: z.string().optional(),
+    },
+    annotations: { idempotentHint: true },
+    handler: async (input) => {
+      const hasInput = Object.values(input).some(v => v !== undefined);
+      if (!hasInput) {
+        return { formState, isDirty };
+      }
+
+      setFormState(prev => ({ ...prev, ...input }));
+      setIsDirty(true);
+      return { filled: true, values: input };
+    },
+  }, [formState, isDirty]);
+
+  // Submit tool - saves to backend
+  useWebMCP({
+    name: "idp_submit",
+    description: `Save IDP configuration to backend.
+
+${isDirty ? `Will save: ${JSON.stringify(formState)}` : "No unsaved changes to submit."}`,
+    inputSchema: {},
+    annotations: { destructiveHint: true },
+    handler: async () => {
+      if (!isDirty) {
+        throw new Error("No unsaved changes to submit.");
+      }
+      await saveMutation.mutateAsync(formState);
+      setIsDirty(false);
+      return { saved: true, values: formState };
+    },
+  }, [formState, isDirty, saveMutation]);
+
+  return <form>...</form>;
+}
+```
+
+**Example (Vanilla JS):**
+```js
+let formState = { idp_type: null, client_id: "", domain: "" };
+let isDirty = false;
+let fillReg = null;
+let submitReg = null;
+
+function registerFormTools() {
+  fillReg?.unregister();
+  submitReg?.unregister();
+
+  fillReg = navigator.modelContext.registerTool({
+    name: "idp_form",
+    description: `Fill IDP form. Current: ${JSON.stringify(formState)}
+${isDirty ? "Has unsaved changes." : ""}
+Updates form visually. Use idp_submit to save.`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        idp_type: { type: "string", enum: ["okta", "auth0", "google"] },
+        client_id: { type: "string" },
+        domain: { type: "string" },
+      }
+    },
+    annotations: { idempotentHint: true },
+    execute: async (input) => {
+      if (!Object.keys(input).length) {
+        return { content: [{ type: "text", text: JSON.stringify({ formState, isDirty }) }] };
+      }
+      formState = { ...formState, ...input };
+      isDirty = true;
+      // Update DOM to reflect changes
+      Object.entries(input).forEach(([key, val]) => {
+        const el = document.querySelector(`[name="${key}"]`);
+        if (el) el.value = val;
+      });
+      registerFormTools();
+      return { content: [{ type: "text", text: JSON.stringify({ filled: true }) }] };
+    }
+  });
+
+  submitReg = navigator.modelContext.registerTool({
+    name: "idp_submit",
+    description: `Save IDP config. ${isDirty ? "Has unsaved changes." : "Nothing to save."}`,
+    inputSchema: { type: "object", properties: {} },
+    annotations: { destructiveHint: true },
+    execute: async () => {
+      if (!isDirty) {
+        return { content: [{ type: "text", text: "No changes to save" }], isError: true };
+      }
+      await fetch("/api/idp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formState),
+      });
+      isDirty = false;
+      registerFormTools();
+      return { content: [{ type: "text", text: JSON.stringify({ saved: true }) }] };
+    }
+  });
+}
+
+registerFormTools();
+```
+
+---
+
 ## Action Tools
 
 **Purpose:** One-shot actions with side effects (send email, deploy, etc.)
@@ -385,14 +509,8 @@ navigator.modelContext.registerTool({
         body: JSON.stringify({ email, role })
       });
       const result = await response.json();
-
-      // Show success toast (use your preferred notification library)
-      showToast("Invitation sent!");
-
       return { content: [{ type: "text", text: JSON.stringify({ sent: true, inviteId: result.id }) }] };
     } catch (error) {
-      showToast(`Failed: ${error.message}`, "error");
-      // Return MCP error format (don't throw in vanilla JS)
       return {
         content: [{ type: "text", text: `Failed to send invite: ${error.message}` }],
         isError: true,
@@ -404,260 +522,69 @@ navigator.modelContext.registerTool({
 
 ---
 
-## Confirmation Pattern
+## Dependencies and Re-registration
 
-**Purpose:** Protect destructive actions that can't be undone.
+The handler function captures state at registration time. Without proper deps, you get stale values.
 
-**When to use:**
-- Deletes
-- Irreversible state changes
-- Actions affecting other users
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Your Code                                                  │
+│  ┌─────────────────┐      ┌─────────────────────────────┐  │
+│  │ Form State      │      │ Tool Registration           │  │
+│  │ - idpType       │ ───► │ - name, description         │  │
+│  │ - clientId      │      │ - inputSchema               │  │
+│  │ - domain        │      │ - handler (captures state)  │  │
+│  └─────────────────┘      └─────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│  navigator.modelContext                                     │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ Registered Tools                                     │   │
+│  │ - idp_config: { handler, description, schema }       │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Pattern:** Two separate tools
-
-1. **Preview tool** (read-only)
-   - Shows what would happen
-   - Returns warning and confirmation instructions
-
-2. **Confirm tool** (destructive)
-   - Requires typing back a confirmation value
-   - Actually performs the action
-
-**Why not read/fill?**
-
-Read/fill implies "fill and save." Delete doesn't fit - there's nothing to "fill." The preview/confirm split makes the danger explicit.
-
-**Example (React):**
+**React:**
 ```tsx
-// Preview tool - safe to call
+// WRONG: Empty deps means handler sees initial values forever
+const [count, setCount] = useState(0);
 useWebMCP({
-  name: "delete_org_preview",
-  description: "Preview what would be deleted. Does NOT delete anything.",
-  inputSchema: {
-    orgId: z.string().uuid(),
-  },
-  annotations: { readOnlyHint: true },
-  handler: async ({ orgId }) => {
-    const org = await fetchOrg(orgId);
-    return {
-      wouldDelete: {
-        name: org.name,
-        memberCount: org.members.length,
-        projectCount: org.projects.length,
-      },
-      warning: "This action is IRREVERSIBLE. Use delete_org_confirm to proceed.",
-      confirmationRequired: org.name,  // Tell AI what to type
-    };
-  },
-}, []);
+  handler: async () => ({ count }),  // Always returns 0!
+}, []);  // Never re-registers
 
-// Confirm tool - actually deletes
+// CORRECT: Include values used in handler
 useWebMCP({
-  name: "delete_org_confirm",
-  description: "Actually delete an organization. IRREVERSIBLE.",
-  inputSchema: {
-    orgId: z.string().uuid(),
-    confirmName: z.string().describe("Type the org name to confirm"),
-  },
-  annotations: { destructiveHint: true },
-  handler: async ({ orgId, confirmName }) => {
-    const org = await fetchOrg(orgId);
-    if (org.name !== confirmName) {
-      throw new Error(`Confirmation failed. Expected "${org.name}", got "${confirmName}"`);
-    }
-    await deleteOrg(orgId);
-    return { deleted: true, orgId };
-  },
-}, []);
+  handler: async () => ({ count }),  // Returns current count
+}, [count]);  // Re-registers when count changes
 ```
 
-**Example (Vanilla JS):**
+**What triggers re-registration:**
+- Changes to any value in the `deps` array
+- Changes to `name` or `description`
+- Changes to `inputSchema`/`outputSchema`/`annotations` (by reference)
+
+**What does NOT trigger re-registration:**
+- Changes to `handler` function (stored in ref internally)
+- Changes to `onSuccess`/`onError` callbacks
+
+**Vanilla JS:**
 ```js
-// Preview tool - safe to call
-navigator.modelContext.registerTool({
-  name: "delete_org_preview",
-  description: "Preview what would be deleted. Does NOT delete anything.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      orgId: { type: "string", format: "uuid" }
-    },
-    required: ["orgId"]
-  },
-  annotations: { readOnlyHint: true },
-  execute: async ({ orgId }) => {
-    const response = await fetch(`/api/orgs/${orgId}`);
-    const org = await response.json();
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify({
-          wouldDelete: {
-            name: org.name,
-            memberCount: org.members.length,
-            projectCount: org.projects.length,
-          },
-          warning: "This action is IRREVERSIBLE. Use delete_org_confirm to proceed.",
-          confirmationRequired: org.name,
-        })
-      }]
-    };
-  }
-});
+// Manually unregister and re-register when state changes
+let registration = null;
 
-// Confirm tool - actually deletes
-navigator.modelContext.registerTool({
-  name: "delete_org_confirm",
-  description: "Actually delete an organization. IRREVERSIBLE.",
-  inputSchema: {
-    type: "object",
-    properties: {
-      orgId: { type: "string", format: "uuid" },
-      confirmName: { type: "string", description: "Type the org name to confirm" }
-    },
-    required: ["orgId", "confirmName"]
-  },
-  annotations: { destructiveHint: true },
-  execute: async ({ orgId, confirmName }) => {
-    // Fetch org to verify name
-    const response = await fetch(`/api/orgs/${orgId}`);
-    const org = await response.json();
-
-    if (org.name !== confirmName) {
-      // Return MCP error format (don't throw in vanilla JS)
-      return {
-        content: [{ type: "text", text: `Confirmation failed. Expected "${org.name}", got "${confirmName}"` }],
-        isError: true,
-      };
-    }
-
-    // Actually delete
-    await fetch(`/api/orgs/${orgId}`, { method: "DELETE" });
-    return { content: [{ type: "text", text: JSON.stringify({ deleted: true, orgId }) }] };
-  }
-});
-```
-
----
-
-## Wizard/Multi-Step Pattern
-
-**Purpose:** Complex flows where steps depend on previous answers.
-
-**Pattern:** One tool per step, with guards
-
-```
-Step 1: Basic info
-Step 2: Details (requires step 1 complete)
-Step 3: Review (requires steps 1-2 complete)
-Step 4: Submit (requires all steps complete)
-```
-
-**Rules:**
-1. Each step checks prerequisites before allowing fill
-2. Description shows which steps are complete
-3. Response indicates next step
-4. Consider a separate "wizard_status" read-only tool
-
-**When to use:**
-- Onboarding flows
-- Complex configuration with dependencies
-- Multi-page forms
-
-**When NOT to use:**
-- Simple forms - just use one read/fill tool
-- Forms where fields are independent - read/fill handles partial updates
-
-**Example (Vanilla JS):**
-```js
-// State tracks wizard progress
-let wizardState = {
-  step1: null,  // { name, email }
-  step2: null,  // { plan, billing }
-  step3: null,  // { confirmed: true }
-};
-let wizardRegistrations = [];
-
-function registerWizardTools() {
-  // Unregister all previous
-  wizardRegistrations.forEach(r => r.unregister());
-  wizardRegistrations = [];
-
-  const step1Complete = wizardState.step1 !== null;
-  const step2Complete = wizardState.step2 !== null;
-
-  // Step 1: Always available
-  wizardRegistrations.push(navigator.modelContext.registerTool({
-    name: "onboarding_step1",
-    description: `Step 1: Basic info. ${step1Complete ? "✓ Complete" : "Not started"}
-
-Call with {} to read, call with values to save.`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        name: { type: "string" },
-        email: { type: "string", format: "email" }
-      }
-    },
-    annotations: { destructiveHint: true },
-    execute: async (input) => {
-      if (!Object.keys(input).length) {
-        return { content: [{ type: "text", text: JSON.stringify(wizardState.step1 ?? {}) }] };
-      }
-      wizardState.step1 = { ...wizardState.step1, ...input };
-      registerWizardTools();  // Re-register to update descriptions
-      return { content: [{ type: "text", text: JSON.stringify({ saved: true, nextStep: 2 }) }] };
-    }
-  }));
-
-  // Step 2: Only if step 1 complete
-  wizardRegistrations.push(navigator.modelContext.registerTool({
-    name: "onboarding_step2",
-    description: `Step 2: Plan selection. ${!step1Complete ? "⚠️ Complete step 1 first" : step2Complete ? "✓ Complete" : "Ready"}`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        plan: { type: "string", enum: ["free", "pro", "enterprise"] },
-        billing: { type: "string", enum: ["monthly", "annual"] }
-      }
-    },
-    annotations: { destructiveHint: true },
-    execute: async (input) => {
-      if (!step1Complete) {
-        return {
-          content: [{ type: "text", text: "Complete step 1 first" }],
-          isError: true,
-        };
-      }
-      if (!Object.keys(input).length) {
-        return { content: [{ type: "text", text: JSON.stringify(wizardState.step2 ?? {}) }] };
-      }
-      wizardState.step2 = { ...wizardState.step2, ...input };
-      registerWizardTools();
-      return { content: [{ type: "text", text: JSON.stringify({ saved: true, nextStep: 3 }) }] };
-    }
-  }));
-
-  // Step 3: Submit (only if steps 1-2 complete)
-  wizardRegistrations.push(navigator.modelContext.registerTool({
-    name: "onboarding_submit",
-    description: `Step 3: Submit. ${!step1Complete || !step2Complete ? "⚠️ Complete previous steps first" : "Ready to submit"}`,
-    inputSchema: { type: "object", properties: {} },
-    annotations: { destructiveHint: true },
-    execute: async () => {
-      if (!step1Complete || !step2Complete) {
-        return {
-          content: [{ type: "text", text: "Complete all steps first" }],
-          isError: true,
-        };
-      }
-      await submitOnboarding(wizardState);
-      return { content: [{ type: "text", text: JSON.stringify({ complete: true }) }] };
-    }
-  }));
+function registerTool() {
+  registration?.unregister();
+  registration = navigator.modelContext.registerTool({
+    description: `Current count: ${count}`,
+    execute: async () => ({ count }),
+    // ...
+  });
 }
 
-registerWizardTools();
+// Call registerTool() whenever count changes
 ```
 
 ---
@@ -694,18 +621,11 @@ execute: async (input) => {
 }
 ```
 
-**Structured vs simple errors:**
+**Structured errors for validation:**
 
-For validation errors, give AI enough info to fix the input:
+Give AI enough info to fix the input:
 
 ```js
-// Simple - just the message
-return {
-  content: [{ type: "text", text: "Invalid email format" }],
-  isError: true,
-};
-
-// Structured - more context for AI
 return {
   content: [{
     type: "text",
@@ -726,117 +646,43 @@ return {
 ### Tool Explosion
 
 ```
-❌ user_get_name, user_get_email, user_get_phone, user_set_name, ...
-✅ user_profile (read/fill pattern)
+BAD:  user_get_name, user_get_email, user_get_phone, user_set_name, ...
+GOOD: user_profile (read/fill pattern)
 ```
 
 ### Redundant Read Tools
 
 ```
-❌ settings_read + settings_update (separate tools)
-✅ settings (read/fill in one tool)
+BAD:  settings_read + settings_update (separate tools)
+GOOD: settings (read/fill in one tool)
 ```
 
 ### Stateless Descriptions
 
 ```
-❌ "Configure user settings"
-✅ "Configure user settings. Current: theme=dark, notifications=on"
+BAD:  "Configure user settings"
+GOOD: "Configure user settings. Current: theme=dark, notifications=on"
 ```
 
 ### Navigation Listing Tools
 
 ```
-❌ "/billing - Tools: billing_form, payment_methods, invoice_list"
-✅ "/billing - Manage subscription, update payment, view invoices"
+BAD:  "/billing - Tools: billing_form, payment_methods, invoice_list"
+GOOD: "/billing - Manage subscription, update payment, view invoices"
 ```
 
 ### Forgetting Re-registration
 
 ```
-❌ Empty deps array with state in handler
-✅ Include all closure values in deps
+BAD:  Empty deps array with state in handler
+GOOD: Include all closure values in deps
 ```
 
 ### UI State in Tool Design
 
 ```
-❌ skill_edit_start, skill_edit_update, skill_edit_save (5 tools tracking edit mode)
-✅ skill_content (1 read/fill tool)
+BAD:  skill_edit_start, skill_edit_update, skill_edit_save (5 tools tracking edit mode)
+GOOD: skill_content (1 read/fill tool)
 ```
 
 AI doesn't care about "edit mode." That's a UI concern. The AI wants to read content and write content. Period.
-
----
-
-## Migrating to Read/Fill
-
-When refactoring existing tools to read/fill:
-
-**Before (5 tools):**
-```
-thing_view         - read current state
-thing_edit_start   - enter edit mode
-thing_edit_update  - update content in editor
-thing_edit_cancel  - discard changes
-thing_edit_save    - persist changes
-```
-
-**After (1 tool):**
-```
-thing_content      - read/fill pattern
-  {} → read current state
-  { content: "..." } → save directly
-```
-
-**Migration steps:**
-
-1. **Add a direct save function** that takes content and returns a Promise:
-   ```tsx
-   // In your route/page component
-   const saveContent = useCallback(async (newContent: string) => {
-     await mutation.mutateAsync({ content: newContent });
-   }, [mutation]);
-   ```
-
-2. **Simplify the hook state interface:**
-   ```tsx
-   // Before
-   interface State {
-     isEditing: boolean;
-     editContent: string;
-     startEdit: () => void;
-     cancelEdit: () => void;
-     setEditContent: (content: string) => void;
-     saveChanges: () => void;
-   }
-
-   // After
-   interface State {
-     content: string;
-     saveContent: (content: string) => Promise<void>;
-     isSaving: boolean;
-   }
-   ```
-
-3. **Replace all tools with one read/fill tool:**
-   ```tsx
-   useWebMCP({
-     name: "thing_content",
-     description: `Read or update content. Current: ${summary}
-
-   Call with no values to read.
-   Call with content to save.`,
-     inputSchema: { content: z.string().optional() },
-     annotations: { destructiveHint: true },
-     handler: async (input) => {
-       if (input.content === undefined) {
-         return { mode: "read", content: currentContent };
-       }
-       await saveContent(input.content);
-       return { mode: "filled", content: input.content };
-     },
-   }, [summary, currentContent, saveContent]);
-   ```
-
-**Key insight:** The UI can still have edit mode, cancel buttons, and draft states. But the WebMCP tool bypasses all of that - it's a direct read/write interface. UI complexity stays in the UI; the tool stays simple.

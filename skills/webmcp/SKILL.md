@@ -1,6 +1,6 @@
 ---
 name: webmcp
-version: 1.0.0
+version: 4.0.0
 description: Write WebMCP tools for browser-based AI agents. Use when building tools that let AI interact with web pages - form filling, navigation, data reading, or any browser automation.
 ---
 
@@ -10,179 +10,185 @@ Opinionated patterns for building tools that let AI agents interact with your we
 
 > **Note:** Examples show the pattern shape. For up-to-date syntax, consult the WebMCP documentation MCP server.
 
-## The Three Tool Types
+## Prerequisites
 
-Every web app needs these:
+Install the polyfill that provides `navigator.modelContext`:
 
-| Type | Count | Where | Purpose |
-|------|-------|-------|---------|
-| **Navigation** | One | Layout | Route between pages |
-| **Read-Only** | Few | Layout or Page | Fetch data |
-| **Form (Read/Fill)** | Many | Page | Read and modify state |
-
-## Core Patterns
-
-### 1. One Navigation Tool Per App
-
-Register at your root layout. Describes WHAT you can do on each page, not which tools exist.
-
-```
-✅ "/billing - Manage subscription, view invoices"
-❌ "/billing - Tools: billing_form, invoice_list"
+```bash
+npm install @mcp-b/global
 ```
 
-Tool names change. Capabilities don't.
+Import it **once** in your entry file, **before** any tool registration:
 
-**Key principles (framework-agnostic):**
+```typescript
+import '@mcp-b/global';
+```
 
-| Concern | Do This | Not This |
-|---------|---------|----------|
-| **Read path** | `window.location.pathname` | Router state hooks/subscriptions |
-| **Navigate** | Your framework's navigate function | — |
-| **Registration** | Once, at a stable component/module | Re-register on route changes |
+After this, `navigator.modelContext.registerTool(...)` is available globally. The Char embedded agent (`<char-agent>`) renders inside Shadow DOM — your tools cannot target elements inside the widget. Treat it as a black box.
 
-**Why `window.location`?** It's a browser API that works everywhere and always returns the current value. Router state hooks (React's `useLocation`, Angular's `ActivatedRoute`, Vue's `useRoute`) cause re-renders or subscriptions that can interfere with tool execution.
+---
 
-**Framework examples:**
+## Tier 1: Rules That Cause Bugs
+
+These aren't preferences. Violating them produces bugs that are hard to diagnose.
+
+### 1. Input Always Wins
+
+React state updates are async. If you set state then read it in the same handler, you get the old value.
 
 ```tsx
-// The read is always the same (browser API)
-const previousPath = window.location.pathname;
+// BUG: state update is async, save reads stale value
+setTheme(input.theme);
+await save({ theme });        // Still the OLD theme!
 
-// The write uses your framework's router:
-navigate(path);                      // React Router, TanStack Router
-router.push(path);                   // Next.js, Vue Router
-this.router.navigate([path]);        // Angular
-history.pushState({}, '', path);     // Vanilla JS
+// CORRECT: use input directly, fall back to closure
+await save({ theme: input.theme ?? currentTheme });
 ```
 
-**Registration patterns:**
+The pattern is always: `input.field ?? closureValue`
+
+### 2. Description Is a Frozen String
+
+The description is captured as a string at registration time. It does not update when your state changes.
+
+```js
+registerTool({
+  description: `Counter is ${count}`,  // Frozen as "Counter is 5"
+  execute: handler
+});
+count = 10;
+// Description still says "Counter is 5"
+```
+
+To update it, re-register the tool:
+- **React:** Include the values in the deps array
+- **Vanilla JS:** Call `unregister()` then register again
+
+Re-register on **meaningful** state changes (selected provider, plan type), not on every keystroke.
+
+### 3. Navigation Tool Lives at Layout Level
+
+Page-level tools unmount when the user navigates away. The navigation tool must survive page transitions — register it at your root layout, not inside a page component.
+
+### 4. Mark Mutations `destructiveHint: true`
+
+Any tool that modifies state (saves, deletes, navigates) should be annotated `destructiveHint: true`. This tells the AI agent to treat the action with appropriate caution.
 
 ```tsx
-// React - register in a layout component, empty deps
-useWebMCP({ name: "nav_goto", handler, ... }, []);
-
-// Vanilla JS - register once at app init
-const unregister = webmcp.registerTool({ name: "nav_goto", handler, ... });
-
-// Angular - register in a service, not a component
-@Injectable({ providedIn: 'root' })
-export class WebMCPService { ... }
+annotations: { destructiveHint: true }
 ```
 
-**Expose the full router API:**
+Forgetting this means the AI may call destructive tools without prompting the user.
 
-The tool's input schema should mirror your router's navigate options. The AI agent needs full access to navigate anywhere in the app - paths, params, query strings, hash, replace vs push, etc.
+---
 
-```tsx
-// ❌ Too limited - just a path string
-inputSchema: { path: z.string() }
+## Tier 2: Patterns That Work
 
-// ✅ Full router API - agent can navigate anywhere
-inputSchema: {
-  to: z.string().describe("Route path"),
-  params: z.record(z.string()).optional().describe("Route params, e.g. { userId: '123' }"),
-  search: z.record(z.unknown()).optional().describe("Query params, e.g. { tab: 'billing', page: 2 }"),
-  hash: z.string().optional().describe("Hash fragment"),
-  replace: z.boolean().optional().describe("Replace history instead of push"),
-}
-
-// Handler passes options directly to router
-handler: async (options) => {
-  const previousPath = window.location.pathname;
-  navigate(options);  // Full options object to router
-  return { previousPath, navigatedTo: options };
-}
-```
-
-**Document everything in the description:**
-
-```
-Navigate anywhere in the app.
-
-Options (mirrors router API):
-- to: Route path ("/settings", "/users/$userId")
-- params: Route params ({ userId: "123" })
-- search: Query params ({ tab: "billing", page: 2 })
-- hash: Hash fragment ("#section")
-- replace: Replace history instead of push
-
-Examples:
-- Simple: { to: "/settings" }
-- With params: { to: "/users/$userId", params: { userId: "123" } }
-- With query: { to: "/search", search: { q: "hello", filter: "active" } }
-- Replace: { to: "/login", replace: true }
-```
-
-The agent gets the same navigation power as your app's code.
-
-### 2. Form Tool Patterns
-
-Two patterns for forms, choose based on user visibility needs:
-
-#### Read/Fill (One Tool)
+### Read/Fill (One Tool for Forms)
 
 One tool handles both reading and writing:
 
 - `{}` → read current state
 - `{ field: value }` → merge with current, save
 
-Best for: Simple forms, backend-only state, when user doesn't need to see changes before save.
+All input fields are `.optional()`. Partial updates just work.
 
-#### Fill/Submit (Two Tools)
+```tsx
+useWebMCP({
+  name: "idp_config",
+  description: `Configure identity provider. Current: ${idpType ?? "not configured"}
 
-Separate tools for staging vs committing:
+Call with no values to read. Call with values to update and save.`,
+  inputSchema: {
+    idp_type: z.enum(["okta", "auth0", "google"]).optional(),
+    client_id: z.string().optional(),
+    domain: z.string().optional(),
+  },
+  annotations: { destructiveHint: true },
+  handler: async (input) => {
+    const hasInput = Object.values(input).some(v => v !== undefined);
+    if (!hasInput) {
+      return { mode: "read", values: { idp_type: idpType, client_id: clientId, domain } };
+    }
+    await saveMutation.mutateAsync({
+      idp_type: input.idp_type ?? idpType,
+      client_id: input.client_id ?? clientId,
+      domain: input.domain ?? domain,
+    });
+    return { mode: "filled", values: input };
+  },
+}, [idpType, clientId, domain, saveMutation]);
+```
 
-- **Fill tool** (idempotent): Updates form visually, no backend changes
+Best for: Simple forms, backend-only state, when user doesn't need to see changes before save. See [PATTERNS.md](references/PATTERNS.md) for React + Vanilla JS examples.
+
+### Fill/Submit (Two Tools for Visible Staging)
+
+Separate tools for staging vs committing, like `git add` then `git commit`:
+
+- **Fill tool** (idempotent): Updates form fields visually, no backend changes
 - **Submit tool** (destructive): Saves current form state to backend
-
-Best for: Complex forms where user should see/verify changes before saving. Like git staging.
 
 ```
 idp_form { idp_type: "okta", domain: "..." }  → Form updates visually
-form_submit {}                                  → Saves to backend
+idp_submit {}                                   → Saves to backend
 ```
 
 The user sees what will happen before it happens. AI can iterate (fill, adjust, fill again) without side effects.
 
-### 3. Current State in Description
+Best for: Complex forms where the user should verify changes before save. See [PATTERNS.md](references/PATTERNS.md) for a complete example.
+
+### State in Descriptions
 
 ```
-"User settings. Current: theme=dark, notifications=on"
+"Configure user settings. Current: theme=dark, notifications=on"
 ```
 
 AI knows the state without calling read mode. Fewer round trips.
 
-### 4. Input Takes Precedence
+Be selective — include values the AI needs for decisions (current provider, active plan), not every form field.
 
-```tsx
-// ✅ Correct
-await save({ theme: input.theme ?? currentTheme });
+### One Navigation Tool
 
-// ❌ Wrong - state update is async
-setTheme(input.theme);
-await save({ theme });  // Still old value!
+One per app, registered at root layout. Describes **what you can do** on each page, not which tools exist.
+
+```
+Navigate to a different page. Current: /settings
+
+Pages:
+- /dashboard - View metrics and quick actions
+- /settings - Configure account and preferences
+- /billing - Manage subscription and payment
 ```
 
-### 5. Re-register on State Change
+Start with `path: z.string()` as your input. Expose more router options (params, search, hash, replace) when you actually need them.
 
-The description is frozen at registration. When state changes, re-register to update it.
+### Read-Only Tools
 
-- React: Include values in deps array
-- Vanilla JS: Call unregister/register manually
+Fetch data the AI needs to make decisions. Mark `readOnlyHint: true` and `idempotentHint: true`. No deps needed if fetching fresh each call. Can register at layout level for cross-page access.
 
-### 6. Thin Wrappers (Keep Logic in Page)
+### Action Tools
 
-WebMCP hooks should be **thin wrappers** over existing page logic:
+One-shot operations with side effects (send invite, deploy, export). Required fields (no `.optional()`), `destructiveHint: true`, return confirmation with IDs or status.
+
+Don't create action tools for things that should be form fields. If you're building `set_theme` as an action, it belongs in a settings form tool.
+
+---
+
+## Tier 3: Scaling Advice
+
+### Thin Wrappers Over Page Functions
+
+When your page already has form handling, validation, and save logic — the WebMCP hook should just wire into it:
 
 ```tsx
-// ✅ Good - hook just calls page functions
+// Good: hook calls existing page function
 handler: async (input) => {
-  updateForm(input);        // Page function handles state
+  updateForm(input);        // Page function handles state + validation
   return { filled: true };
 }
 
-// ❌ Bad - logic duplicated in hook
+// Bad: logic duplicated in hook
 handler: async (input) => {
   setIdpType(input.idp_type);
   setClientId(input.client_id);
@@ -191,33 +197,32 @@ handler: async (input) => {
 }
 ```
 
-**Why thin wrappers:**
+The page owns state, validation, mutations, and side effects (toasts, redirects). The hook just provides tool metadata and wiring.
 
-1. **Single source of truth** - Page already has the logic for human users
-2. **Maintainability** - Change once, AI and human get same behavior
-3. **Schema reuse** - Use existing validation (React Hook Form, Zod)
-4. **No duplicate side effects** - Page owns toasts, the hook doesn't add more
+This only applies when clean page functions exist to call. For simple tools, inline logic is fine.
 
-**The hook provides:**
-- Tool name and description
-- Annotations (idempotent, destructive hints)
-- Input/output schema
-- Wiring to page functions
+### Component-Scoped vs Global Tools
 
-**The page provides:**
-- Form state and setters
-- Validation logic
-- Mutation/save functions
-- Side effects (toasts, redirects)
+- **Page-level tools** mount/unmount with the page component (progressive disclosure)
+- **Layout-level tools** survive navigation (nav tool, billing status)
 
-## Documentation
+Don't register too many global tools — it clutters the tool list.
 
-| Doc | What It Covers |
-|-----|----------------|
-| [CONCEPTS.md](references/CONCEPTS.md) | Why patterns work (closures, lifecycle, philosophy) |
-| [PATTERNS.md](references/PATTERNS.md) | Detailed patterns for each tool type |
+### `outputSchema`
 
-For API reference (parameters, types, return values), use the WebMCP docs MCP server.
+Typed responses help AI parse results reliably:
+
+```tsx
+outputSchema: {
+  plan: z.string(),
+  usage: z.number(),
+  renewalDate: z.string(),
+},
+```
+
+Not required, but useful for read-only and status tools.
+
+---
 
 ## Quick Decisions
 
@@ -227,7 +232,7 @@ For API reference (parameters, types, return values), use the WebMCP docs MCP se
 
 **Read-only or read/fill?**
 - Just fetching data? → Read-only with `readOnlyHint: true`
-- Form with state? → Read/fill pattern
+- Form with state? → Read/fill
 
 **Page-level or layout-level?**
 - Needs to survive navigation? → Layout
@@ -236,18 +241,21 @@ For API reference (parameters, types, return values), use the WebMCP docs MCP se
 **Read/Fill or Fill/Submit?**
 - Simple form, backend-only state → Read/Fill (one tool)
 - User should see changes before save → Fill/Submit (two tools)
-- Complex multi-step form → Fill/Submit (iterate without side effects)
+
+---
 
 ## Common Mistakes
 
-1. **Empty deps array** → Stale closures forever
-2. **Setting state then reading it** → Async timing bug
-3. **Multiple tools per form** → Confusing, use read/fill or fill/submit
-4. **Listing tool names in nav description** → Brittle, describe capabilities
-5. **Forgetting to mark destructive** → AI may call without user awareness
+1. **Empty deps array with state in handler** → Stale closures forever
+2. **Setting state then reading it** → Async timing bug (use input ?? closure)
+3. **Multiple separate tools per form** → Use read/fill or fill/submit instead
+4. **Listing tool names in nav description** → Brittle; describe capabilities
+5. **Forgetting `destructiveHint`** → AI may call without user awareness
 6. **UI state in tool design** → AI doesn't care about "edit mode," it wants read/write
-7. **Logic in hooks** → Duplicate code, use thin wrappers that call page functions
-8. **Toasts in hooks** → Redundant, the visual feedback IS the feedback
+7. **Logic in hooks when page functions exist** → Duplicate code, use thin wrappers
+8. **Toasts in hooks** → Page already handles user feedback
+
+---
 
 ## Testing with Chrome DevTools MCP
 
@@ -363,3 +371,14 @@ Before shipping a WebMCP tool, verify:
 - [ ] **Fill is idempotent** - Can call multiple times safely
 - [ ] **Submit persists** - Only backend change happens on submit
 - [ ] **Submit is destructive** - Marked with `destructiveHint: true`
+
+---
+
+## References
+
+| Doc | What It Covers |
+|-----|----------------|
+| [CONCEPTS.md](references/CONCEPTS.md) | Why patterns work (closures, lifecycle, philosophy) |
+| [PATTERNS.md](references/PATTERNS.md) | Detailed examples for each tool type with React + Vanilla JS |
+
+For API reference (parameters, types, return values), use the WebMCP docs MCP server.
