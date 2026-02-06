@@ -79,7 +79,7 @@ If your page has Content Security Policy headers, they may block WebMCP:
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'self';
                script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
-               connect-src 'self' https://app.usechar.ai;">
+               connect-src 'self' https://app.usechar.com;">
 ```
 
 ---

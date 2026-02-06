@@ -1,12 +1,12 @@
 {
   "name": "char",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "One-shot setup for Char embedded AI agent with WebMCP browser tools",
   "author": {
     "name": "WebMCP",
     "email": "alex@mcp-b.ai"
   },
-  "homepage": "https://docs.usechar.ai",
+  "homepage": "https://docs.usechar.com",
   "repository": "https://github.com/WebMCP-org/char-plugin",
   "license": "MIT",
   "keywords": [
