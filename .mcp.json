@@ -14,7 +14,7 @@
     },
     "char-saas": {
       "type": "http",
-      "url": "https://app.usechar.com/mcp"
+      "url": "https://app.usechar.ai/mcp"
     }
   }
 }
