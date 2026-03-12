@@ -283,27 +283,26 @@
     console.log('🎨 Design tokens exposed:', window.DESIGN_TOKENS);
   </script>
 
-  <!-- Char Embedded Agent Widget -->
-  <!-- REPLACE_WITH_API_KEY will be replaced by the setup script -->
-  <!-- Note: Install packages first: npm install @mcp-b/char @mcp-b/global -->
-  <script type="module" src="/node_modules/@mcp-b/char/dist/web-component-standalone.iife.js"></script>
+  <!-- Char Embedded Agent Shell -->
+  <!-- REPLACE_WITH_PUBLISHABLE_KEY will be replaced by the setup script -->
+  <script src="https://cdn.jsdelivr.net/npm/@mcp-b/char@latest/dist/shell-standalone.iife.js" defer></script>
   <style>
-    char-agent {
-      position: fixed;
-      top: 0;
-      right: 0;
-      width: 400px;
-      height: 100vh;
-      z-index: 9999;
+    char-agent-shell {
+      --char-color-primary: var(--brand-primary);
+      --char-color-background: var(--bg-main);
+      --char-color-foreground: var(--text-primary);
+      --char-color-border: var(--border-color);
     }
   </style>
+  <char-agent-shell id="char-shell" panel-width="420"></char-agent-shell>
   <script>
-    console.log('✅ Char embedded agent initialized!')
-    console.log('💡 Try saying: "Fill out the contact form with test data"')
-  </script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const shell = document.getElementById('char-shell');
+      shell?.setAuth({ publishableKey: 'REPLACE_WITH_PUBLISHABLE_KEY' });
 
-  <char-agent
-    dev-mode='{"anthropicApiKey": "REPLACE_WITH_API_KEY"}'>
-  </char-agent>
+      console.log('✅ Char embedded agent shell initialized!');
+      console.log('💡 Try saying: \"Fill out the contact form with test data\"');
+    });
+  </script>
 </body>
 </html>

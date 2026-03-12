@@ -1,7 +1,7 @@
 {
   "name": "char",
-  "version": "3.0.1",
-  "description": "One-shot setup for Char embedded AI agent with WebMCP browser tools",
+  "version": "3.1.0",
+  "description": "One-shot setup for Char publishable-key embeds, shell-first UX, and WebMCP browser tools",
   "author": {
     "name": "WebMCP",
     "email": "alex@mcp-b.ai"

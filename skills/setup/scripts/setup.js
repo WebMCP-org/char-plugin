@@ -8,29 +8,25 @@
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
 
 /**
- * Replace API key placeholder in demo HTML
+ * Replace publishable key placeholder in demo HTML
  */
-export async function injectApiKey(htmlPath, apiKey) {
+export async function injectPublishableKey(htmlPath, publishableKey) {
   const content = await readFile(htmlPath, 'utf-8');
 
-  if (!apiKey || !apiKey.startsWith('sk-ant-')) {
-    throw new Error('Invalid Anthropic API key. Must start with "sk-ant-"');
+  if (!publishableKey || !publishableKey.startsWith('pk_')) {
+    throw new Error('Invalid publishable key. Must start with "pk_"');
   }
 
-  const updated = content.replaceAll(
-    'REPLACE_WITH_API_KEY',
-    apiKey
-  );
+  const updated = content.replaceAll('REPLACE_WITH_PUBLISHABLE_KEY', publishableKey);
 
   await writeFile(htmlPath, updated, 'utf-8');
 
   return {
     success: true,
     path: htmlPath,
-    message: `API key injected into ${htmlPath}`
+    message: `Publishable key injected into ${htmlPath}`,
   };
 }
 
@@ -43,9 +39,9 @@ export async function verifyDemoPage(htmlPath) {
   const checks = {
     hasEmbeddedAgent:
       content.includes('@mcp-b/char') || content.includes('cdn.jsdelivr.net/npm/@mcp-b/char'),
-    hasApiKey: !content.includes('REPLACE_WITH_API_KEY'),
+    hasPublishableKey: !content.includes('REPLACE_WITH_PUBLISHABLE_KEY'),
     hasStyles: content.includes('<style>') || content.includes('styles.css'),
-    hasWebComponent: content.includes('<char-agent'),
+    hasWebComponent: content.includes('<char-agent') || content.includes('<char-agent-shell'),
   };
 
   const allPassed = Object.values(checks).every(Boolean);
@@ -55,7 +51,7 @@ export async function verifyDemoPage(htmlPath) {
     checks,
     message: allPassed
       ? 'Demo page is properly configured'
-      : 'Demo page is missing required elements'
+      : 'Demo page is missing required elements',
   };
 }
 
@@ -129,7 +125,7 @@ async function testCharSetup() {
 
   // Test 2: Fill form fields
   console.log('📝 Filling form fields...');
-  ${fields.map(f => `  await webmcp.fill({ uid: '${f.id}', value: '${testData[f.id]}' });`).join('\n')}
+  ${fields.map((f) => `  await webmcp.fill({ uid: '${f.id}', value: '${testData[f.id]}' });`).join('\n')}
   console.log('✅ Form filled');
 
   // Test 3: Take screenshot
@@ -152,31 +148,36 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 
   try {
     switch (command) {
-      case 'inject-key':
-        const result = await injectApiKey(arg1, arg2);
+      case 'inject-publishable-key':
+      case 'inject-key': {
+        const result = await injectPublishableKey(arg1, arg2);
         console.log(result.message);
         break;
+      }
 
-      case 'verify':
+      case 'verify': {
         const verification = await verifyDemoPage(arg1);
         console.log(verification.message);
         console.log(verification.checks);
         break;
+      }
 
-      case 'extract-fields':
+      case 'extract-fields': {
         const fields = await extractFormFields(arg1);
         console.log('Form fields:', fields);
         break;
+      }
 
-      case 'generate-test':
+      case 'generate-test': {
         const testFields = await extractFormFields(arg1);
         const script = generateTestScript(testFields);
         console.log(script);
         break;
+      }
 
       default:
         console.log('Usage:');
-        console.log('  node setup.js inject-key <html-path> <api-key>');
+        console.log('  node setup.js inject-publishable-key <html-path> <publishable-key>');
         console.log('  node setup.js verify <html-path>');
         console.log('  node setup.js extract-fields <html-path>');
         console.log('  node setup.js generate-test <html-path>');

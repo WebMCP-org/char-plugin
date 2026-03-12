@@ -1,55 +1,31 @@
-# Customizing the Embedded Agent Widget
+# Customization Guide (Shell + Agent)
 
-Guide to styling and configuring the Char embedded agent.
+Style Char via CSS variables on `<char-agent-shell>` or `<char-agent>`.
 
-## Web Component Only
-
-Char is embedded via the `` web component.
-
-## Basic Embed
+## Preferred Embed Base
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@mcp-b/char@latest/dist/web-component-standalone.iife.js" defer></script>
-<char-agent auth-token="YOUR_AUTH_TOKEN"></char-agent>
-```
-
-### Dev Mode (Testing Only)
-
-```html
-<char-agent dev-mode='{"anthropicApiKey":"sk-ant-..."}'></char-agent>
-```
-
-## Web Component Attributes
-
-| Attribute | Type | Description |
-| --- | --- | --- |
-| `auth-token` | string | Auth token for production usage |
-| `dev-mode` | JSON | Dev mode config (stateless testing only) |
-| `open` | boolean | Controlled open state |
-| `enable-debug-tools` | boolean | Enable debug tools (prefixed with `debug_`) |
-
-### dev-mode JSON
-
-```json
-{
-  "anthropicApiKey": "sk-ant-...",
-  "openaiApiKey": "sk-...",
-  "useLocalApi": true
-}
+<script src="https://cdn.jsdelivr.net/npm/@mcp-b/char@latest/dist/shell-standalone.iife.js" defer></script>
+<char-agent-shell id="char-shell"></char-agent-shell>
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("char-shell")?.setAuth({ publishableKey: "pk_live_..." });
+  });
+</script>
 ```
 
 ## Styling with CSS Variables
 
-Customize the widget by setting CSS variables on the `<char-agent>` element:
-
 ```html
 <style>
-  char-agent {
-    --char-color-primary: #8b5cf6;
+  char-agent-shell {
+    --char-color-primary: #2563eb;
     --char-color-background: #ffffff;
-    --char-color-foreground: #111827;
+    --char-color-foreground: #0f172a;
+    --char-color-muted: #f8fafc;
+    --char-color-border: #e2e8f0;
     --char-radius: 12px;
-    --char-font-sans: 'Inter', sans-serif;
+    --char-font-sans: "Inter", system-ui, sans-serif;
   }
 </style>
 ```
@@ -68,78 +44,54 @@ Customize the widget by setting CSS variables on the `<char-agent>` element:
 --char-font-sans
 ```
 
-### Semantic Variables
+## Shell Positioning and Size
 
-```css
---char-user-bubble-bg
---char-user-bubble-text
---char-assistant-bubble-bg
---char-assistant-bubble-text
---char-composer-bg
---char-composer-border
---char-composer-text
---char-composer-placeholder
---char-composer-button-bg
---char-composer-button-text
---char-tool-bg
---char-tool-border
---char-tool-text
---char-tool-header-bg
---char-tool-approve-bg
---char-tool-approve-text
---char-tool-deny-bg
---char-tool-deny-text
---char-code-bg
---char-code-text
+```html
+<char-agent-shell panel-width="420"></char-agent-shell>
 ```
+
+Notes:
+- Shell manages pill/panel/fullscreen behavior.
+- Desktop open mode is right-side inline panel.
+- Mobile open mode is fullscreen.
 
 ## Dark Mode
 
-Use `prefers-color-scheme` to swap variables:
+```css
+char-agent-shell {
+  --char-color-background: #ffffff;
+  --char-color-foreground: #0f172a;
+}
 
-```html
-<style>
-  char-agent {
-    --char-color-background: #ffffff;
-    --char-color-foreground: #111827;
-    --char-color-primary: #4f46e5;
+@media (prefers-color-scheme: dark) {
+  char-agent-shell {
+    --char-color-background: #0b1220;
+    --char-color-foreground: #e2e8f0;
+    --char-color-border: #1e293b;
   }
-
-  @media (prefers-color-scheme: dark) {
-    char-agent {
-      --char-color-background: #111827;
-      --char-color-foreground: #e5e7eb;
-      --char-color-primary: #a78bfa;
-    }
-  }
-</style>
+}
 ```
 
-## Shadow DOM Limitations
+## Runtime Auth and Identity
 
-Shadow DOM is always enabled.
+Use JS APIs for auth values:
 
-- The widget renders inside Shadow DOM (no opt-out).
-- WebMCP tools cannot select or interact with elements inside the widget.
-- Use CSS variables on `` for styling.
+```ts
+shell.setAuth({ publishableKey: "pk_live_...", idToken });
+```
 
-## Development vs Production
+Do not pass user tokens in DOM attributes.
 
-**Dev/Test (stateless):**
-- Use `dev-mode` with your Anthropic API key
-- No persistence
+## Iframe Boundary
 
-**Production (auth-token):**
-- Use `auth-token` for production embeds
-- Persistent threads and usage tracking
-
-## Security Best Practices
-
-- Never ship provider API keys (Anthropic/OpenAI) to production clients.
-- Use `auth-token` for production embeds.
-- Keep `dev-mode` only for local testing.
+The visible assistant UI is iframe-owned. WebMCP tools cannot target internal widget DOM.
+Customize with:
+- CSS variables
+- element attributes
+- JS API (`setAuth`, `setHostContext`, `setOpen`, `toggleOpen`)
 
 ## Next Steps
 
-- See [VISUAL_INTEGRATION.md](./VISUAL_INTEGRATION.md) for design matching
-- See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues
+- See [VISUAL_INTEGRATION.md](./VISUAL_INTEGRATION.md)
+- See [PRODUCTION.md](./PRODUCTION.md)
+- See [TESTING_GUIDE.md](./TESTING_GUIDE.md)

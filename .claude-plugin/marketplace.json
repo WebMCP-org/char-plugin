@@ -9,8 +9,8 @@
     {
       "name": "char",
       "source": "./",
-      "description": "One-shot setup for Char embedded AI agent with WebMCP browser tools",
-      "version": "3.0.0"
+      "description": "One-shot setup for Char publishable-key embeds, shell-first UX, and WebMCP browser tools",
+      "version": "3.1.0"
     }
   ]
 }

@@ -1,7 +1,7 @@
 ---
 name: webmcp
-version: 4.0.0
 description: Write WebMCP tools for browser-based AI agents. Use when building tools that let AI interact with web pages - form filling, navigation, data reading, or any browser automation.
+allowed-tools: Read, Write, Edit, Bash, Glob, Grep, mcp__chrome-devtools__*, mcp__webmcp-Docs__*
 ---
 
 # WebMCP Tool Development
@@ -25,6 +25,11 @@ import '@mcp-b/global';
 ```
 
 After this, `navigator.modelContext.registerTool(...)` is available globally. The Char embedded agent (`<char-agent>`) renders inside Shadow DOM — your tools cannot target elements inside the widget. Treat it as a black box.
+
+For setup/testing loops, pair this skill with `/char:setup`:
+- Use `<char-agent-shell>` as the default host UX
+- Use Chrome DevTools MCP to dogfood tool contracts
+- Optionally set `enable-debug-tools` on the shell/agent while developing
 
 ---
 
@@ -260,6 +265,12 @@ Not required, but useful for read-only and status tools.
 ## Testing with Chrome DevTools MCP
 
 Test WebMCP tools directly from Claude Code using the Chrome DevTools MCP. **Dogfood your tools as you build them** - if you can't figure out how to use a tool, neither will the AI agent.
+
+Install/refresh Chrome DevTools MCP if needed:
+
+```bash
+claude mcp add --transport stdio chrome-devtools -- npx -y @mcp-b/chrome-devtools-mcp@latest
+```
 
 ### Setup
 
