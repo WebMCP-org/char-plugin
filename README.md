@@ -1,10 +1,15 @@
 # Char Plugin for Claude Code
 
-One-shot setup for [Char](https://docs.usechar.com) embedded AI agent with WebMCP browser tools.
+One-shot setup for [Char](https://docs.usechar.com) embedded AI agents with WebMCP tools.
 
 ## What is Char?
 
-Char is an embeddable AI agent that can interact with your web application through WebMCP tools. Users chat with the agent, and it can fill forms, click buttons, navigate pages, and perform any action you expose as a tool.
+Char is an embeddable AI agent that can use your WebMCP tools to operate your product UI.
+
+- Embed UI via `<char-agent-shell>` (preferred) or `<char-agent>`
+- Authenticate embeds with a **publishable key**
+- Optionally attach per-user identity with `idToken`
+- Test tools directly with Chrome DevTools MCP
 
 ## Installation
 
@@ -30,17 +35,16 @@ Char is an embeddable AI agent that can interact with your web application throu
 
 After installing, run:
 
-```
+```text
 /char:setup
 ```
 
-This will:
-1. Connect you to Char (creates account/org automatically via OAuth)
-2. Configure allowed domains for your app
-3. Install the npm package
-4. Add the agent to your HTML/React/Vue app
-5. Apply styling to match your theme
-6. Verify everything works
+The setup flow is optimized for:
+1. Publishable-key auth (`publishableKey` required)
+2. Script-tag-first embeds (`@latest` CDN)
+3. `<char-agent-shell>` default UX (pill + panel + responsive fullscreen)
+4. WebMCP tooling + Chrome DevTools MCP verification
+5. Framework guidance (Next.js/SSR client-only embedding)
 
 ## What's Included
 
@@ -48,72 +52,47 @@ This will:
 
 | Server | Purpose |
 |--------|---------|
-| `char-saas` | Organization management, SSO config |
+| `char-saas` | Organization management (keys, domains, SSO config) |
 | `char-docs` | Char documentation search |
 | `webmcp-docs` | WebMCP API documentation |
-| `chrome-devtools` | Browser automation for testing |
+| `chrome-devtools` | Browser automation for testing tools and embed behavior |
 
 ### Skills
 
-- `/char:setup` - Complete setup wizard (visual integration, live preview, recipes, troubleshooting)
-- `/char:webmcp` - WebMCP tool writing patterns and best practices
+- `/char:setup` - End-to-end setup using publishable keys, shell-first UI, and test workflow
+- `/char:webmcp` - WebMCP tool-writing patterns, implementation, and dogfooding
 
 ### Agents
 
-- `integration-specialist` - Autonomous agent that creates comprehensive WebMCP tool coverage for your codebase
+- `integration-specialist` - Autonomous agent to build comprehensive WebMCP tool coverage
 
-## After Setup
+## Recommended Embed (Script Tag + Shell)
 
-### Add WebMCP Tools
-
-Let the agent interact with your UI:
-
-```typescript
-import '@mcp-b/global';
-
-navigator.modelContext.registerTool({
-  name: 'add_to_cart',
-  description: 'Add a product to the shopping cart',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      productId: { type: 'string' },
-    },
-    required: ['productId'],
-  },
-  execute: async ({ productId }) => {
-    document.querySelector(`[data-product="${productId}"] .add-btn`)?.click();
-    return { content: [{ type: 'text', text: 'Added to cart' }] };
-  },
-});
+```html
+<script src="https://cdn.jsdelivr.net/npm/@mcp-b/char@latest/dist/shell-standalone.iife.js" defer></script>
+<char-agent-shell id="char-shell"></char-agent-shell>
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    const shell = document.getElementById("char-shell");
+    shell?.setAuth({ publishableKey: "pk_live_..." });
+  });
+</script>
 ```
 
-### Configure SSO (Production)
+## Next.js / SSR Note
 
-```
-mcp__char-saas__manage_idp_config({
-  action: "update",
-  idp_type: "okta",
-  idp_domain: "company.okta.com",
-  idp_client_id: "your-client-id"
-})
-```
+`<char-agent>` and `<char-agent-shell>` are browser custom elements and should be rendered in a **client component**.
 
-### Customize Styling
-
-```css
-char-agent {
-  --char-color-primary: #your-brand-color;
-  --char-color-background: #ffffff;
-  --char-color-foreground: #0f172a;
-}
-```
+- Do not rely on server rendering for the widget runtime
+- Use `dynamic(..., { ssr: false })` or a `'use client'` wrapper
+- Pass `idToken` client-side with `connect()` / `setAuth()`
 
 ## Documentation
 
-- [Char Docs](https://docs.usechar.com) - Full documentation
-- [WebMCP Docs](https://docs.mcp-b.ai) - Tool registration API
-- [Identity Providers](https://docs.usechar.com/identity-providers) - SSO setup guides
+- [Char Docs](https://docs.usechar.com)
+- [Embedding Guide](https://docs.usechar.com/guides/embedding-agent)
+- [Framework Guides](https://docs.usechar.com/guides/frameworks/index)
+- [WebMCP Docs](https://docs.mcp-b.ai)
 
 ## Support
 
